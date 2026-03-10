@@ -21,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <div className="flex items-center gap-6 text-sm text-gray-400">
             <a href="/" className="hover:text-white transition-colors">Templates</a>
+            <a href="/generate" className="hover:text-white transition-colors text-purple-400 hover:text-purple-300 font-medium">✨ Generate with AI</a>
             <a href="/exports" className="hover:text-white transition-colors">My Exports</a>
           </div>
         </nav>
