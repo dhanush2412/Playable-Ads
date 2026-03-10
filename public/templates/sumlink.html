@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Minimum viable HTML5 for Playable Ads -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #2c3e50;
+            overflow: hidden;
+            touch-action: none;
+            font-family: sans-serif;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #34495e;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        #cta-container {
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            pointer-events: auto;
+            display: none;
+        }
+
+        #cta-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            animation: pulse 1.5s infinite;
+            cursor: pointer;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        #msg {
+            position: absolute;
+            top: 15%;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="ui-layer">
+        <div id="msg">Match numbers to 10!</div>
+        <div id="cta-container">
+            <button id="cta-btn" onclick="openStore()">DOWNLOAD FREE</button>
+        </div>
+    </div>
+    <canvas id="game"></canvas>
+    <script>
+        // --- System & Ad Lifecycle ---
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        // Fallback store URL
+        const STORE_URL = 'https://play.google.com/store/apps/details?id=com.ezygamers.sumlinknumbergame';
+
+        function openStore() {
+            // Critical MRAID Support
+            if (typeof mraid !== 'undefined') {
+                if (mraid.getState() === 'loading') {
+                    mraid.addEventListener('ready', () => mraid.open(STORE_URL));
+                } else {
+                    mraid.open(STORE_URL);
+                }
+            } else {
+                window.open(STORE_URL);
+            }
+        }
+
+        // --- Core logic state ---
+        let state = 'playing'; // 'playing' or 'win'
+        const gridSize = 4;
+        let tileSize = 0;
+        let offsetX = 0, offsetY = 0;
+
+        // Sample 4x4 Grid - Ensures there are matches adding up to 10 and pairs
+        let grid = [
+            [5, 5, 2, 8],
+            [1, 9, 3, 7],
+            [4, 6, 5, 5],
+            [8, 2, 1, 9]
+        ];
+        let selected = null; // {r, c}
+        let matchedPairs = 0;
+
+        function draw() {
+            // Clear Screen
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Calculate responsive board layout
+            const margin = 20;
+            const boardSize = Math.min(canvas.width, canvas.height) - margin * 2;
+            tileSize = Math.floor(boardSize / gridSize);
+            offsetX = Math.floor((canvas.width - boardSize) / 2);
+            offsetY = Math.floor((canvas.height - boardSize) / 2) + 30; // Shift down slightly
+
+            // Draw grid tiles
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const val = grid[r][c];
+                    if (val === 0) continue; // 0 = cleared tile
+
+                    const x = offsetX + c * tileSize;
+                    const y = offsetY + r * tileSize;
+
+                    // Draw tile background (highlight if selected)
+                    ctx.fillStyle = (selected && selected.r === r && selected.c === c) ? '#f1c40f' : '#ecf0f1';
+                    ctx.beginPath();
+                    ctx.roundRect(x + 2, y + 2, tileSize - 4, tileSize - 4, 10);
+                    ctx.fill();
+
+                    // Draw number text
+                    ctx.fillStyle = '#2c3e50';
+                    ctx.font = `bold ${Math.floor(tileSize * 0.5)}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(val, x + tileSize / 2, y + tileSize / 2);
+                }
+            }
+
+            // Overlay when won
+            if (state === 'win') {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        // --- Input Handling ---
+        canvas.addEventListener('pointerdown', (e) => {
+            if (state !== 'playing') return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left - offsetX;
+            const clickY = e.clientY - rect.top - offsetY;
+
+            if (clickX >= 0 && clickY >= 0) {
+                const c = Math.floor(clickX / tileSize);
+                const r = Math.floor(clickY / tileSize);
+
+                // Ensure bounds and tile exists
+                if (r < gridSize && c < gridSize && grid[r][c] !== 0) {
+                    handleTileSelect(r, c);
+                }
+            }
+        });
+
+        function handleTileSelect(r, c) {
+            if (!selected) {
+                selected = { r, c };
+            } else {
+                if (selected.r === r && selected.c === c) {
+                    selected = null; // deselect if tapped again
+                } else {
+                    // Check for a valid match
+                    const val1 = grid[selected.r][selected.c];
+                    const val2 = grid[r][c];
+
+                    if (val1 === val2 || val1 + val2 === 10) {
+                        // Valid Match!
+                        grid[selected.r][selected.c] = 0;
+                        grid[r][c] = 0;
+                        matchedPairs++;
+
+                        // Show CTA early after 2 successful matches to convert while they feel smart
+                        if (matchedPairs >= 2) {
+                            endGame("Great Job!");
+                        }
+                    }
+                    selected = null;
+                }
+            }
+            draw();
+        }
+
+        function endGame(messageText) {
+            state = 'win';
+            document.getElementById('msg').innerText = messageText;
+            document.getElementById('cta-container').style.display = 'block';
+            draw();
+        }
+
+        // --- Initial setup ---
+        resize();
+    </script>
+</body>
+
+</html>

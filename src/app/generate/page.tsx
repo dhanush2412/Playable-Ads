@@ -9,6 +9,15 @@ const NETWORKS = [
   { id: "ironsource", label: "IronSource", limit: "2MB" },
 ];
 
+const BASE_TEMPLATES = [
+  { id: "none", label: "None — generate from scratch", description: "AI creates a fresh ad design" },
+  { id: "wizard_sumlink", label: "Wizard SumLink", description: "Dark purple, number grid, tutorial hand" },
+  { id: "sumlink_meta", label: "SumLink Meta", description: "Clean number matching, Meta-optimised" },
+  { id: "wizard_match", label: "Wizard Match", description: "Dark purple wizard theme, match pairs" },
+  { id: "sumlink", label: "SumLink Classic", description: "Original SumLink ad style" },
+  { id: "custom", label: "Paste your own HTML", description: "Use any existing ad as the base" },
+];
+
 export default function GeneratePage() {
   const [apiKey, setApiKey] = useState("");
   const [gameName, setGameName] = useState("");
@@ -19,10 +28,13 @@ export default function GeneratePage() {
   const [primaryColor, setPrimaryColor] = useState("#6d28d9");
   const [secondaryColor, setSecondaryColor] = useState("#f1c40f");
   const [timeLimit, setTimeLimit] = useState(20);
+  const [selectedTemplate, setSelectedTemplate] = useState("wizard_sumlink");
+  const [customHtml, setCustomHtml] = useState("");
   const [generatedHtml, setGeneratedHtml] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [charCount, setCharCount] = useState(0);
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -36,10 +48,27 @@ export default function GeneratePage() {
     else localStorage.removeItem("groq_api_key");
   };
 
+  const fetchTemplateHtml = async (templateId: string): Promise<string> => {
+    if (templateId === "none" || templateId === "custom") return "";
+    setLoadingTemplate(true);
+    try {
+      const res = await fetch(`/templates/${templateId}.html`);
+      if (!res.ok) return "";
+      return await res.text();
+    } catch {
+      return "";
+    } finally {
+      setLoadingTemplate(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!apiKey.trim()) { setError("Enter your Groq API key to continue."); return; }
     if (!gameName.trim()) { setError("Enter the game name."); return; }
     if (!mechanic.trim()) { setError("Describe the game mechanic."); return; }
+    if (selectedTemplate === "custom" && !customHtml.trim()) {
+      setError("Paste your base template HTML or choose a different template."); return;
+    }
 
     setError("");
     setGeneratedHtml("");
@@ -49,10 +78,21 @@ export default function GeneratePage() {
     abortRef.current = new AbortController();
 
     try {
+      // Get base template HTML
+      let baseTemplateHtml = "";
+      if (selectedTemplate === "custom") {
+        baseTemplateHtml = customHtml;
+      } else if (selectedTemplate !== "none") {
+        baseTemplateHtml = await fetchTemplateHtml(selectedTemplate);
+      }
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey, gameName, iosStoreUrl, androidStoreUrl, targetNetwork, mechanic, primaryColor, secondaryColor, timeLimit }),
+        body: JSON.stringify({
+          apiKey, gameName, iosStoreUrl, androidStoreUrl, targetNetwork,
+          mechanic, primaryColor, secondaryColor, timeLimit, baseTemplateHtml,
+        }),
         signal: abortRef.current.signal,
       });
 
@@ -106,15 +146,52 @@ export default function GeneratePage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Generate with AI ✨</h1>
-          <p className="text-gray-400">Describe your game and let AI build a complete playable ad in seconds.</p>
+          <p className="text-gray-400">Pick a base template, describe your game, and let AI build a polished playable ad.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left — Form */}
           <div className="space-y-6">
+
+            {/* Template Selector */}
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+              <h2 className="font-semibold mb-3 flex items-center gap-2">
+                <span>🎨</span> Base Template
+              </h2>
+              <p className="text-xs text-gray-500 mb-3">AI will adapt this template for your game, keeping its visual polish and structure.</p>
+              <div className="space-y-2">
+                {BASE_TEMPLATES.map(t => (
+                  <label key={t.id}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedTemplate === t.id ? "border-purple-500 bg-purple-500/10" : "border-gray-700 hover:border-gray-600"}`}>
+                    <input type="radio" name="template" value={t.id}
+                      checked={selectedTemplate === t.id}
+                      onChange={() => setSelectedTemplate(t.id)}
+                      className="mt-0.5 accent-purple-500" />
+                    <div>
+                      <div className="text-sm font-medium">{t.label}</div>
+                      <div className="text-xs text-gray-500">{t.description}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              {selectedTemplate === "custom" && (
+                <div className="mt-3">
+                  <label className="text-xs text-gray-400 mb-1 block">Paste your HTML template</label>
+                  <textarea
+                    value={customHtml}
+                    onChange={e => setCustomHtml(e.target.value)}
+                    rows={6}
+                    placeholder="<!DOCTYPE html>..."
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-purple-500 resize-none"
+                  />
+                  <p className="text-xs text-gray-600 mt-1">{customHtml.length.toLocaleString()} characters</p>
+                </div>
+              )}
+            </div>
+
             {/* API Key */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
               <h2 className="font-semibold mb-3 flex items-center gap-2">
@@ -141,7 +218,8 @@ export default function GeneratePage() {
               <div>
                 <label className="text-xs text-gray-400 mb-1 block">Game Name</label>
                 <input value={gameName} onChange={e => setGameName(e.target.value)}
-                  placeholder="e.g. SumLink" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
+                  placeholder="e.g. SumLink"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
               </div>
               <div>
                 <label className="text-xs text-gray-400 mb-1 block">Core Mechanic <span className="text-purple-400">*</span></label>
@@ -153,12 +231,14 @@ export default function GeneratePage() {
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">iOS Store URL</label>
                   <input value={iosStoreUrl} onChange={e => setIosStoreUrl(e.target.value)}
-                    placeholder="https://apps.apple.com/..." className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
+                    placeholder="https://apps.apple.com/..."
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Android Store URL</label>
                   <input value={androidStoreUrl} onChange={e => setAndroidStoreUrl(e.target.value)}
-                    placeholder="https://play.google.com/..." className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
+                    placeholder="https://play.google.com/..."
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
                 </div>
               </div>
             </div>
@@ -209,9 +289,9 @@ export default function GeneratePage() {
             )}
 
             <div className="flex gap-3">
-              <button onClick={handleGenerate} disabled={isLoading}
+              <button onClick={handleGenerate} disabled={isLoading || loadingTemplate}
                 className="flex-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors">
-                {isLoading ? "Generating..." : "✨ Generate Ad"}
+                {loadingTemplate ? "Loading template..." : isLoading ? "Generating..." : "✨ Generate Ad"}
               </button>
               {isLoading && (
                 <button onClick={handleStop} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-xl transition-colors text-sm">
@@ -239,7 +319,6 @@ export default function GeneratePage() {
               )}
             </div>
 
-            {/* Phone mockup */}
             <div className="flex justify-center">
               <div className="relative" style={{ width: 280 }}>
                 <div className="bg-gray-800 rounded-[2.5rem] p-3 border border-gray-700 shadow-2xl">
@@ -262,7 +341,11 @@ export default function GeneratePage() {
                     {!isLoading && !generatedHtml && (
                       <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-gray-600">
                         <span className="text-4xl">🎮</span>
-                        <p className="text-xs">Your ad preview will appear here</p>
+                        <p className="text-xs text-center px-4">
+                          {selectedTemplate !== "none"
+                            ? `Will adapt "${BASE_TEMPLATES.find(t => t.id === selectedTemplate)?.label}" for your game`
+                            : "AI will generate a fresh ad design"}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -270,7 +353,6 @@ export default function GeneratePage() {
               </div>
             </div>
 
-            {/* Size bar */}
             {generatedHtml && (
               <div>
                 <div className="flex justify-between text-xs text-gray-500 mb-1">

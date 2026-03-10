@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SumLink</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .game-container {
+            width: 300px;
+            height: 300px;
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 10px;
+            width: 100%;
+        }
+        .cell {
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .cell.selected {
+            background-color: #6d28d9;
+            color: #ffffff;
+        }
+        .tutorial {
+            position: absolute;
+            font-size: 24px;
+            color: #f1c40f;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+        .cta-button {
+            background-color: #6d28d9;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .cta-button:hover {
+            background-color: #5c1cc4;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="grid" id="grid"></div>
+        <div class="tutorial" id="tutorial"></div>
+        <button class="cta-button" id="cta-button" style="display:none;">Download Now</button>
+        <div id="timer">20s</div>
+    </div>
+    <script>
+        let grid = document.getElementById('grid');
+        let tutorial = document.getElementById('tutorial');
+        let ctaButton = document.getElementById('cta-button');
+        let timerElement = document.getElementById('timer');
+        let cells = [];
+        let selectedCells = [];
+        let timer = 20;
+        let intervalId;
+
+        // Generate grid cells
+        for (let i = 0; i < 16; i++) {
+            let cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.dataset.value = Math.floor(Math.random() * 10);
+            cell.innerText = cell.dataset.value;
+            cell.addEventListener('click', handleCellClick);
+            grid.appendChild(cell);
+            cells.push(cell);
+        }
+
+        // Tutorial animation
+        tutorial.style.top = '50%';
+        tutorial.style.left = '50%';
+        tutorial.style.transform = 'translate(-50%, -50%)';
+        tutorial.innerText = 'Tap 2 numbers';
+
+        setTimeout(() => {
+            tutorial.style.animation = 'blink 1s infinite';
+            setTimeout(() => {
+                tutorial.style.display = 'none';
+            }, 3000);
+        }, 1000);
+
+        // Game logic
+        function handleCellClick(event) {
+            if (selectedCells.length < 2) {
+                event.target.classList.add('selected');
+                selectedCells.push(event.target);
+                if (selectedCells.length === 2) {
+                    let sum = parseInt(selectedCells[0].dataset.value) + parseInt(selectedCells[1].dataset.value);
+                    if (sum === 10) {
+                        // Win condition
+                        clearInterval(intervalId);
+                        ctaButton.style.display = 'block';
+                        grid.style.pointerEvents = 'none';
+                    } else {
+                        // Invalid selection
+                        setTimeout(() => {
+                            selectedCells[0].classList.remove('selected');
+                            selectedCells[1].classList.remove('selected');
+                            selectedCells = [];
+                        }, 500);
+                    }
+                }
+            }
+        }
+
+        // Timer
+        intervalId = setInterval(() => {
+            timer--;
+            timerElement.innerText = `${timer}s`;
+            if (timer === 0) {
+                clearInterval(intervalId);
+                ctaButton.style.display = 'block';
+                grid.style.pointerEvents = 'none';
+            }
+        }, 1000);
+
+        // CTA button click handler
+        ctaButton.addEventListener('click', () => {
+            let userAgent = navigator.userAgent.toLowerCase();
+            let storeUrl;
+            if (userAgent.includes('iphone') || userAgent.includes('ipad')) {
+                storeUrl = 'https://apps.apple.com/us/app/sumlink/id1234567890'; // Replace with actual iOS store URL
+            } else if (userAgent.includes('android')) {
+                storeUrl = 'https://play.google.com/store/apps/details?id=org.thjh.sumlink&hl=en_IN';
+            }
+            if (typeof mraid !== 'undefined') {
+                mraid.open(storeUrl);
+            } else {
+                window.open(storeUrl, '_blank');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+        }
+
+        body {
+            background: #2c1e4a;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 500px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #1a0b2e 0%, #3d246c 100%);
+            overflow: hidden;
+        }
+
+        /* Top Banner & Character */
+        #top-area {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 25%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            padding: 10px;
+        }
+
+        #character {
+            font-size: 80px;
+            filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.5));
+            animation: float 3s ease-in-out infinite;
+            z-index: 12;
+            line-height: 1;
+        }
+
+        #dialogue {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 20px;
+            text-align: center;
+            color: #333;
+            font-weight: 800;
+            font-size: 18px;
+            margin-left: -10px;
+            position: relative;
+            z-index: 11;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 4px solid #f1c40f;
+            transform: rotate(2deg);
+            width: 60%;
+        }
+
+        #dialogue::before {
+            content: '';
+            position: absolute;
+            left: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 15px 20px 15px 0;
+            border-style: solid;
+            border-color: transparent white transparent transparent;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+
+            50% {
+                transform: translateY(-15px) rotate(3deg);
+            }
+        }
+
+        @keyframes celebrate {
+            0% {
+                transform: scale(1) translateY(0);
+            }
+
+            20% {
+                transform: scale(1.2) translateY(-20px) rotate(-10deg);
+            }
+
+            40% {
+                transform: scale(1.2) translateY(-20px) rotate(10deg);
+            }
+
+            60% {
+                transform: scale(1.2) translateY(-20px) rotate(-10deg);
+            }
+
+            80% {
+                transform: scale(1.2) translateY(-20px) rotate(10deg);
+            }
+
+            100% {
+                transform: scale(1) translateY(0) rotate(0);
+            }
+        }
+
+        /* Game Board */
+        #board-area {
+            position: absolute;
+            top: 25%;
+            left: 0;
+            width: 100%;
+            height: 55%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+        }
+
+        #board-bg {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 15px;
+            border: 3px solid #5b3e8c;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            position: relative;
+        }
+
+        .slot {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .gem {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #3d246c;
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: transform 0.2s, top 0.3s ease, left 0.3s ease, filter 0.2s, box-shadow 0.2s;
+            user-select: none;
+        }
+
+        .gem.selected {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px #f1c40f, inset 0 2px 4px rgba(255, 255, 255, 0.7);
+            filter: brightness(1.2);
+            border: 2px solid #f1c40f;
+        }
+
+        .gem.matched {
+            transform: scale(0);
+            opacity: 0;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+        }
+
+        /* Tutorial Hand */
+        #tutorial-hand {
+            position: absolute;
+            font-size: 50px;
+            z-index: 100;
+            pointer-events: none;
+            filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.5));
+            animation: tapPulse 1.5s ease-in-out infinite;
+            opacity: 0;
+        }
+
+        @keyframes tapPulse {
+            0% {
+                transform: translateY(0) scale(1.2) rotate(-10deg);
+                opacity: 0;
+            }
+
+            20% {
+                transform: translateY(0) scale(1) rotate(0deg);
+                opacity: 1;
+                filter: drop-shadow(0 0 15px #f1c40f);
+            }
+
+            70% {
+                transform: translateY(0) scale(1) rotate(0deg);
+                opacity: 1;
+                filter: drop-shadow(0 0 15px #f1c40f);
+            }
+
+            100% {
+                transform: translateY(20px) scale(0.8);
+                opacity: 0;
+            }
+        }
+
+        /* Highlight box for tutorial */
+        #highlight {
+            position: absolute;
+            width: 72px;
+            height: 72px;
+            border: 4px solid #f1c40f;
+            border-radius: 14px;
+            z-index: 20;
+            box-shadow: 0 0 15px #f1c40f, inset 0 0 10px #f1c40f;
+            pointer-events: none;
+            opacity: 0;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 0.4;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+        }
+
+        /* Bottom CTA */
+        #bottom-area {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 20%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        #cta-btn {
+            background: linear-gradient(to bottom, #f1c40f, #f39c12);
+            color: #fff;
+            border: 3px solid #fff;
+            padding: 15px 40px;
+            font-size: 26px;
+            font-weight: 900;
+            border-radius: 40px;
+            text-transform: uppercase;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5), inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+            animation: ctaPulse 1.5s infinite;
+            cursor: pointer;
+            text-shadow: 1px 2px 2px rgba(0, 0, 0, 0.4);
+        }
+
+        @keyframes ctaPulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.08);
+                box-shadow: 0 15px 25px rgba(0, 0, 0, 0.6), inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* Particles */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            font-size: 20px;
+            z-index: 50;
+            animation: fadeUp 1s forwards;
+        }
+
+        @keyframes fadeUp {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+                filter: hue-rotate(0deg);
+            }
+
+            100% {
+                transform: translateY(-80px) scale(0.2);
+                opacity: 0;
+                filter: hue-rotate(90deg);
+            }
+        }
+
+        /* End Overlay */
+        #end-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #end-text {
+            font-size: 50px;
+            font-weight: 900;
+            color: #f1c40f;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 1), 0 0 20px #f1c40f;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+            animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+        }
+
+        #end-char {
+            font-size: 120px;
+            animation: float 2s infinite;
+            filter: drop-shadow(0 0 30px #f1c40f);
+            margin-bottom: 20px;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0) rotate(-10deg);
+            }
+
+            70% {
+                transform: scale(1.1) rotate(5deg);
+            }
+
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-container">
+        <div id="top-area">
+            <div id="character">🧙‍♂️</div>
+            <div id="dialogue">Match numbers to 10!</div>
+        </div>
+
+        <div id="board-area">
+            <div id="board-bg">
+                <div id="grid">
+                    <!-- Slots will be generated here -->
+                </div>
+                <div id="highlight"></div> <!-- We will move this dynamically now -->
+            </div>
+        </div>
+
+        <div id="bottom-area">
+            <button id="cta-btn" onclick="openStore()">PLAY FREE</button>
+        </div>
+
+        <div id="tutorial-hand">👆</div>
+
+        <div id="end-overlay">
+            <div id="end-char">🧙‍♂️</div>
+            <div id="end-text">MAGICAL!<br><span
+                    style="font-size: 24px; color: white; text-shadow: none; font-weight: 600;">Can you solve the
+                    rest?</span></div>
+            <button id="cta-btn" onclick="openStore()" style="animation: none; transform: scale(1.1);">INSTALL
+                NOW</button>
+        </div>
+    </div>
+
+    <script>
+        // System & MRAID
+        const STORE_URL = 'https://play.google.com/store/apps/details?id=com.ezygamers.sumlinknumbergame';
+        function openStore() {
+            if (typeof mraid !== 'undefined') {
+                if (mraid.getState() === 'loading') mraid.addEventListener('ready', () => mraid.open(STORE_URL));
+                else mraid.open(STORE_URL);
+            } else { window.open(STORE_URL, '_blank'); }
+        }
+
+        // Game Config (SumLink Logic)
+        const COLS = 4;
+        const ROWS = 4;
+        const TILE_SIZE = 66; // 60px + 6px gap
+
+        // 4x4 Grid - Ensures matches to 10
+        const INITIAL_GRID = [
+            [5, 5, 2, 8],
+            [1, 9, 3, 7],
+            [4, 6, 5, 5],
+            [8, 2, 1, 9]
+        ];
+
+        let board = [];
+        let state = 'tutorial'; // tutorial, playing, animating, win
+        const gridEl = document.getElementById('grid');
+        const boardBg = document.getElementById('board-bg');
+        let gemIdCounter = 0;
+
+        let selectedGem = null;
+        let matchesMade = 0;
+
+        // Tutorial sequence state
+        let handTargetIndex = 0;
+        // We want them to click [0][0] (a 5) then click [0][1] (a 5)
+        let tutorialMoves = [
+            { r: 0, c: 0 },
+            { r: 0, c: 1 }
+        ];
+
+        // Build Grid
+        function init() {
+            for (let r = 0; r < ROWS; r++) {
+                board[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    let slot = document.createElement('div');
+                    slot.className = 'slot';
+                    gridEl.appendChild(slot);
+
+                    let val = INITIAL_GRID[r][c];
+                    let gem = createGem(r, c, val);
+                    board[r][c] = gem;
+                }
+            }
+            setupTutorial();
+        }
+
+        function createGem(r, c, val) {
+            let gem = document.createElement('div');
+            gem.className = 'gem';
+            gem.innerText = val;
+            gem.dataset.val = val;
+            gem.id = 'gem_' + (gemIdCounter++);
+            setPosition(gem, r, c);
+            boardBg.appendChild(gem);
+            return { el: gem, val: val, r: r, c: c };
+        }
+
+        function setPosition(gemEl, r, c) {
+            gemEl.style.left = (c * TILE_SIZE + 10) + 'px';
+            gemEl.style.top = (r * TILE_SIZE + 10) + 'px';
+        }
+
+        // Tutorial
+        function setupTutorial() {
+            let target = tutorialMoves[handTargetIndex];
+            let r = target.r, c = target.c;
+
+            const hl = document.getElementById('highlight');
+            hl.style.left = (c * TILE_SIZE + 10 - 6) + 'px'; // -6 for border
+            hl.style.top = (r * TILE_SIZE + 10 - 6) + 'px';
+            hl.style.opacity = 0.8;
+
+            const hand = document.getElementById('tutorial-hand');
+            let br = boardBg.getBoundingClientRect();
+            hand.style.left = (br.left + c * TILE_SIZE + 15) + 'px';
+            hand.style.top = (br.top + r * TILE_SIZE + 30) + 'px';
+            hand.style.opacity = 1;
+        }
+
+        function advanceTutorial() {
+            handTargetIndex++;
+            if (handTargetIndex >= tutorialMoves.length) {
+                document.getElementById('highlight').style.display = 'none';
+                document.getElementById('tutorial-hand').style.display = 'none';
+                state = 'playing';
+            } else {
+                setupTutorial();
+            }
+        }
+
+        // Input Handling (Tap Mechanics)
+        gridEl.parentElement.addEventListener('pointerdown', (e) => {
+            if (state === 'animating' || state === 'win') return;
+
+            let br = boardBg.getBoundingClientRect();
+            let x = e.clientX - br.left - 10;
+            let y = e.clientY - br.top - 10;
+
+            let c = Math.floor(x / TILE_SIZE);
+            let r = Math.floor(y / TILE_SIZE);
+
+            if (c >= 0 && c < COLS && r >= 0 && r < ROWS && board[r][c]) {
+                if (state === 'tutorial') {
+                    // Enforce tutorial order
+                    let intendedTarget = tutorialMoves[handTargetIndex];
+                    if (r !== intendedTarget.r || c !== intendedTarget.c) return;
+                }
+                handleGemSelect(r, c);
+            }
+        });
+
+        function handleGemSelect(r, c) {
+            let gem = board[r][c];
+
+            if (!selectedGem) {
+                selectedGem = gem;
+                gem.el.classList.add('selected');
+                if (state === 'tutorial') advanceTutorial();
+            } else {
+                if (selectedGem.r === r && selectedGem.c === c) {
+                    // Deselect if tapped again
+                    selectedGem.el.classList.remove('selected');
+                    selectedGem = null;
+                } else {
+                    // Attempt Match
+                    let val1 = selectedGem.val;
+                    let val2 = gem.val;
+
+                    if (val1 === val2 || val1 + val2 === 10) {
+                        // Success Match
+                        state = 'animating';
+
+                        selectedGem.el.classList.add('matched');
+                        gem.el.classList.add('matched');
+
+                        createParticles(selectedGem.r, selectedGem.c);
+                        createParticles(gem.r, gem.c);
+
+                        let char = document.getElementById('character');
+                        char.style.animation = 'none';
+                        void char.offsetWidth;
+                        char.style.animation = 'celebrate 1s ease-in-out';
+
+                        let praises = ["Magical!", "Brilliant!", "Excellent!"];
+                        document.getElementById('dialogue').innerText = praises[matchesMade % praises.length];
+
+                        board[selectedGem.r][selectedGem.c] = null;
+                        board[gem.r][gem.c] = null;
+
+                        setTimeout(() => {
+                            selectedGem.el.remove();
+                            gem.el.remove();
+                            selectedGem = null;
+                            matchesMade++;
+
+                            if (matchesMade >= 2) {
+                                winGame();
+                            } else {
+                                state = 'playing';
+                            }
+                        }, 400);
+
+                        if (state === 'tutorial') {
+                            document.getElementById('highlight').style.display = 'none';
+                            document.getElementById('tutorial-hand').style.display = 'none';
+                            state = 'playing'; // Unlock fully after first guided match
+                        }
+
+                    } else {
+                        // Failed Match - wobble
+                        gem.el.style.transform = "translateX(-5px)";
+                        setTimeout(() => gem.el.style.transform = "translateX(5px)", 50);
+                        setTimeout(() => gem.el.style.transform = "translateX(0)", 100);
+
+                        selectedGem.el.classList.remove('selected');
+                        selectedGem = null;
+                    }
+                }
+            }
+        }
+
+        function createParticles(r, c) {
+            for (let i = 0; i < 5; i++) {
+                let p = document.createElement('div');
+                p.className = 'particle';
+                p.innerText = ['✨', '🌟', '💫'][Math.floor(Math.random() * 3)];
+                p.style.left = (c * TILE_SIZE + 10 + 20 + Math.random() * 20 - 10) + 'px';
+                p.style.top = (r * TILE_SIZE + 10 + 20 + Math.random() * 20 - 10) + 'px';
+                boardBg.appendChild(p);
+                setTimeout(() => p.remove(), 1000);
+            }
+        }
+
+        let wons = false;
+        function winGame() {
+            if (wons) return;
+            wons = true;
+            state = 'win';
+            setTimeout(() => {
+                document.getElementById('end-overlay').style.display = 'flex';
+            }, 500);
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
