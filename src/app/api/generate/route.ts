@@ -4,7 +4,6 @@ import { NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
   const {
-    apiKey,
     gameName,
     iosStoreUrl,
     androidStoreUrl,
@@ -16,9 +15,10 @@ export async function POST(req: NextRequest) {
     baseTemplateHtml,
   } = await req.json();
 
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: "Groq API key required" }), {
-      status: 400,
+    return new Response(JSON.stringify({ error: "GROQ_API_KEY not configured on server" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }

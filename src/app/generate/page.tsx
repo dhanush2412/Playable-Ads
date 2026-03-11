@@ -21,7 +21,6 @@ const BASE_TEMPLATES = [
 ];
 
 export default function GeneratePage() {
-  const [apiKey, setApiKey] = useState("");
   const [gameName, setGameName] = useState("");
   const [iosStoreUrl, setIosStoreUrl] = useState("");
   const [androidStoreUrl, setAndroidStoreUrl] = useState("");
@@ -40,17 +39,6 @@ export default function GeneratePage() {
   const [agentPhase, setAgentPhase] = useState<"idle" | "researcher" | "designer" | "coder" | "streaming">("idle");
   const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("groq_api_key");
-    if (saved) setApiKey(saved);
-  }, []);
-
-  const saveApiKey = (key: string) => {
-    setApiKey(key);
-    if (key) localStorage.setItem("groq_api_key", key);
-    else localStorage.removeItem("groq_api_key");
-  };
-
   const fetchTemplateHtml = async (templateId: string): Promise<string> => {
     if (templateId === "none" || templateId === "custom") return "";
     setLoadingTemplate(true);
@@ -66,7 +54,6 @@ export default function GeneratePage() {
   };
 
   const handleGenerate = async () => {
-    if (!apiKey.trim()) { setError("Enter your Groq API key to continue."); return; }
     if (!gameName.trim()) { setError("Enter the game name."); return; }
     if (!mechanic.trim()) { setError("Describe the game mechanic."); return; }
     if (selectedTemplate === "custom" && !customHtml.trim()) {
@@ -94,7 +81,7 @@ export default function GeneratePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apiKey, gameName, iosStoreUrl, androidStoreUrl, targetNetwork,
+          gameName, iosStoreUrl, androidStoreUrl, targetNetwork,
           mechanic, primaryColor, secondaryColor, timeLimit, baseTemplateHtml,
         }),
         signal: abortRef.current.signal,
@@ -242,26 +229,6 @@ export default function GeneratePage() {
                   <p className="text-xs text-gray-600 mt-1">{customHtml.length.toLocaleString()} characters</p>
                 </div>
               )}
-            </div>
-
-            {/* API Key */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-              <h2 className="font-semibold mb-3 flex items-center gap-2">
-                <span className="text-yellow-400">🔑</span> Groq API Key
-              </h2>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={e => saveApiKey(e.target.value)}
-                placeholder="gsk_..."
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 font-mono"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                Saved locally in your browser. Never sent to our servers.{" "}
-                <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300">
-                  Get a free key →
-                </a>
-              </p>
             </div>
 
             {/* Game Info */}
