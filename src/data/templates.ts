@@ -9,6 +9,8 @@ export interface Template {
   uiHtml: string;
   hookJs: string;
   logicSlotJs: string;
+  comingSoon?: boolean;
+  templateFile?: string;
 }
 
 export const templates: Template[] = [
@@ -84,11 +86,13 @@ function isMatch(val1, val2) {
     secondaryColor: "#00ff88",
     description:
       "Dark background with neon glowing tiles. A countdown timer creates urgency. Numbers pulse with neon glow on hover. Fast-paced arcade feel.",
-    uiHtml: "",
+    uiHtml: "<!-- neon_arcade -->",
     hookJs: "",
     logicSlotJs: `function isMatch(val1, val2) {
   return val1 === val2 || val1 + val2 === 10;
 }`,
+    comingSoon: false,
+    templateFile: "neon_arcade",
   },
   {
     id: "minimal-clean",
@@ -99,11 +103,13 @@ function isMatch(val1, val2) {
     secondaryColor: "#6366f1",
     description:
       "Clean white background with soft pastel number tiles. A gentle arrow guides the first move. Minimal animations, maximum clarity.",
-    uiHtml: "",
+    uiHtml: "<!-- minimal_clean -->",
     hookJs: "",
     logicSlotJs: `function isMatch(val1, val2) {
   return val1 === val2 || val1 + val2 === 10;
 }`,
+    comingSoon: false,
+    templateFile: "minimal_clean",
   },
   {
     id: "jungle-adventure",

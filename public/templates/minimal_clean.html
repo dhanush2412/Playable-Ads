@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Minimal Clean</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f8fafc;
+    color: #1e293b;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+  .container { width: 100%; max-width: 360px; padding: 20px; }
+  .header { text-align: center; margin-bottom: 16px; }
+  .logo { width: 44px; height: 44px; background: #6366f1; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 22px; }
+  .title { font-size: 20px; font-weight: 700; color: #1e293b; letter-spacing: -0.5px; }
+  .subtitle { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+  .stats { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; background: white; border-radius: 14px; padding: 10px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .stat { text-align: center; }
+  .stat-val { font-size: 18px; font-weight: 700; color: #6366f1; }
+  .stat-lbl { font-size: 10px; color: #94a3b8; font-weight: 500; margin-top: 1px; }
+  .timer-wrap { margin-bottom: 14px; }
+  .timer-row { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; font-weight: 500; margin-bottom: 5px; }
+  .timer-bar { height: 5px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+  .timer-fill { height: 100%; background: #6366f1; border-radius: 99px; transition: width 1s linear; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .cell {
+    aspect-ratio: 1;
+    background: white;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+    color: #334155;
+    position: relative;
+  }
+  .cell:active { transform: scale(0.94); }
+  .cell.selected {
+    background: #6366f1;
+    color: white;
+    box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+    transform: scale(1.05);
+  }
+  .cell.cleared {
+    background: #f1f5f9;
+    color: #e2e8f0;
+    box-shadow: none;
+    cursor: default;
+    pointer-events: none;
+  }
+  .cell.flash { animation: matchFlash 0.35s ease forwards; }
+  @keyframes matchFlash {
+    0% { background: #f59e0b; transform: scale(1.1); box-shadow: 0 4px 20px rgba(245,158,11,0.4); }
+    100% { background: #f1f5f9; transform: scale(1); }
+  }
+  .cell.pulse-hint { animation: hintPulse 0.7s ease 2; }
+  @keyframes hintPulse {
+    0%,100% { box-shadow: 0 2px 6px rgba(0,0,0,0.07); }
+    50% { box-shadow: 0 0 0 4px rgba(99,102,241,0.3), 0 4px 14px rgba(99,102,241,0.2); transform: scale(1.04); }
+  }
+  .hint-arrow {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    color: #6366f1;
+    animation: arrowBounce 0.5s ease infinite alternate;
+    pointer-events: none;
+  }
+  @keyframes arrowBounce { from { top: -22px; } to { top: -16px; } }
+  .rule { text-align: center; font-size: 11px; color: #94a3b8; font-weight: 500; }
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(248,250,252,0.96);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+  }
+  .overlay.show { display: flex; }
+  .overlay-icon { font-size: 56px; margin-bottom: 14px; }
+  .overlay-title { font-size: 26px; font-weight: 800; color: #1e293b; margin-bottom: 6px; }
+  .overlay-sub { font-size: 13px; color: #94a3b8; margin-bottom: 28px; }
+  .cta-btn {
+    background: #6366f1;
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 16px 40px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(99,102,241,0.35);
+    transition: all 0.2s;
+    letter-spacing: 0.2px;
+  }
+  .cta-btn:hover { background: #4f46e5; box-shadow: 0 8px 28px rgba(99,102,241,0.45); transform: translateY(-1px); }
+</style>
+</head>
+<body>
+<div class="overlay" id="endOverlay">
+  <div class="overlay-icon" id="endIcon">🎉</div>
+  <div class="overlay-title" id="endTitle">Well Done!</div>
+  <div class="overlay-sub" id="endSub">You cleared the board!</div>
+  <button class="cta-btn" onclick="openStore()">Download Now</button>
+</div>
+
+<div class="container">
+  <div class="header">
+    <div class="logo">🔢</div>
+    <div class="title">Number Match</div>
+    <div class="subtitle">Find pairs that add up to 10</div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-val" id="scoreVal">0</div><div class="stat-lbl">Score</div></div>
+    <div class="stat"><div class="stat-val" id="pairsVal">0/8</div><div class="stat-lbl">Pairs</div></div>
+    <div class="stat"><div class="stat-val" id="timerVal">20</div><div class="stat-lbl">Seconds</div></div>
+  </div>
+  <div class="timer-wrap">
+    <div class="timer-row"><span>Time remaining</span><span id="timerPct">100%</span></div>
+    <div class="timer-bar"><div class="timer-fill" id="timerFill" style="width:100%"></div></div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="rule">Tap two numbers that sum to 10</div>
+</div>
+
+<script>
+const IOS_URL = 'https://apps.apple.com';
+const ANDROID_URL = 'https://play.google.com';
+const TIME_LIMIT = 20;
+
+function openStore() {
+  const url = /iPad|iPhone|iPod/.test(navigator.userAgent) ? IOS_URL : ANDROID_URL;
+  if (typeof mraid !== 'undefined') mraid.open(url); else window.open(url, '_blank');
+}
+
+let numbers = [], selected = null, pairs = 0, score = 0, timeLeft = TIME_LIMIT;
+let timerInterval = null, gameActive = false;
+
+function generateNumbers() {
+  const vals = [];
+  for (let i = 0; i < 8; i++) {
+    const a = Math.floor(Math.random() * 9) + 1;
+    vals.push(a, 10 - a);
+  }
+  return vals.sort(() => Math.random() - 0.5);
+}
+
+function findFirstPair() {
+  for (let i = 0; i < numbers.length; i++) {
+    for (let j = i + 1; j < numbers.length; j++) {
+      if (numbers[i] !== null && numbers[j] !== null && numbers[i] + numbers[j] === 10) return [i, j];
+    }
+  }
+  return null;
+}
+
+function buildGrid() {
+  numbers = generateNumbers();
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  numbers.forEach((n, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.textContent = n;
+    cell.dataset.index = i;
+    cell.addEventListener('click', () => onCellClick(i));
+    grid.appendChild(cell);
+  });
+  setTimeout(showHint, 600);
+}
+
+function getCells() { return document.querySelectorAll('.cell'); }
+
+function showHint() {
+  const pair = findFirstPair();
+  if (!pair) return;
+  const cells = getCells();
+  cells[pair[0]].classList.add('pulse-hint');
+  const arrow = document.createElement('div');
+  arrow.className = 'hint-arrow';
+  arrow.textContent = '↓';
+  cells[pair[0]].appendChild(arrow);
+  setTimeout(() => {
+    cells[pair[0]].classList.remove('pulse-hint');
+    arrow.remove();
+  }, 2200);
+}
+
+function onCellClick(idx) {
+  if (!gameActive) return;
+  const cells = getCells();
+  if (cells[idx].classList.contains('cleared')) return;
+  if (selected === null) {
+    selected = idx;
+    cells[idx].classList.add('selected');
+  } else if (selected === idx) {
+    cells[idx].classList.remove('selected');
+    selected = null;
+  } else {
+    const a = numbers[selected], b = numbers[idx];
+    if (a + b === 10) {
+      cells[selected].classList.remove('selected');
+      cells[selected].classList.add('flash');
+      cells[idx].classList.add('flash');
+      setTimeout(() => {
+        cells[selected].classList.add('cleared');
+        cells[selected].textContent = '';
+        cells[idx].classList.add('cleared');
+        cells[idx].textContent = '';
+        numbers[selected] = null;
+        numbers[idx] = null;
+      }, 300);
+      pairs++;
+      score += 100 + Math.floor(timeLeft * 2);
+      document.getElementById('pairsVal').textContent = pairs + '/8';
+      document.getElementById('scoreVal').textContent = score;
+      selected = null;
+      if (pairs === 8) setTimeout(endGame, 400, true);
+    } else {
+      cells[selected].classList.remove('selected');
+      cells[idx].classList.add('selected');
+      selected = idx;
+    }
+  }
+}
+
+function startTimer() {
+  gameActive = true;
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    document.getElementById('timerVal').textContent = timeLeft;
+    const pct = Math.round(timeLeft / TIME_LIMIT * 100);
+    document.getElementById('timerFill').style.width = pct + '%';
+    document.getElementById('timerPct').textContent = pct + '%';
+    if (timeLeft <= 5) document.getElementById('timerFill').style.background = '#ef4444';
+    if (timeLeft <= 0) { clearInterval(timerInterval); endGame(false); }
+  }, 1000);
+}
+
+function endGame(win) {
+  gameActive = false;
+  clearInterval(timerInterval);
+  const overlay = document.getElementById('endOverlay');
+  document.getElementById('endIcon').textContent = win ? '🎉' : '⏰';
+  document.getElementById('endTitle').textContent = win ? 'Well Done!' : 'Time\'s Up!';
+  document.getElementById('endSub').textContent = win ? 'Score: ' + score + ' · Amazing!' : 'Score: ' + score + ' · Try again!';
+  overlay.classList.add('show');
+}
+
+buildGrid();
+startTimer();
+</script>
+</body>
+</html>

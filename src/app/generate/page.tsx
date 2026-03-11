@@ -15,6 +15,8 @@ const BASE_TEMPLATES = [
   { id: "sumlink_meta", label: "SumLink Meta", description: "Clean number matching, Meta-optimised" },
   { id: "wizard_match", label: "Wizard Match", description: "Dark purple wizard theme, match pairs" },
   { id: "sumlink", label: "SumLink Classic", description: "Original SumLink ad style" },
+  { id: "neon_arcade", label: "Neon Arcade", description: "Black + Neon Glow, countdown timer" },
+  { id: "minimal_clean", label: "Minimal Clean", description: "White + Pastel, gentle arrow" },
   { id: "custom", label: "Paste your own HTML", description: "Use any existing ad as the base" },
 ];
 
@@ -76,6 +78,7 @@ export default function GeneratePage() {
     setIsLoading(true);
 
     abortRef.current = new AbortController();
+    let html = "";
 
     try {
       // Get base template HTML
@@ -105,7 +108,7 @@ export default function GeneratePage() {
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
-      let html = "";
+      html = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -121,6 +124,21 @@ export default function GeneratePage() {
       }
     } finally {
       setIsLoading(false);
+      if (html) {
+        try {
+          const saved = JSON.parse(localStorage.getItem("ezyads_exports") || "[]");
+          saved.unshift({
+            id: Date.now().toString(),
+            gameName,
+            network: targetNetwork,
+            sizeKB: Math.round(new Blob([html]).size / 1024),
+            html,
+            createdAt: new Date().toISOString(),
+            templateUsed: selectedTemplate,
+          });
+          localStorage.setItem("ezyads_exports", JSON.stringify(saved.slice(0, 20)));
+        } catch { /* localStorage unavailable */ }
+      }
     }
   };
 
