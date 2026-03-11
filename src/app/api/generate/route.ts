@@ -2,6 +2,8 @@ import { generateText, streamText } from "ai";
 import { createGroq } from "@ai-sdk/groq";
 import { NextRequest } from "next/server";
 
+export const maxDuration = 60; // Vercel: extend timeout to 60s for 3-agent pipeline
+
 export async function POST(req: NextRequest) {
   const {
     gameName,
