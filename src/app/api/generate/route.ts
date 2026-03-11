@@ -46,28 +46,18 @@ export async function POST(req: NextRequest) {
 
         const [researchResult, designResult] = await Promise.all([
           generateText({
-            model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
-            maxOutputTokens: 400,
-            system: `You are a mobile ad strategist. Output a concise JSON brief for a playable ad. Be specific and practical.`,
-            prompt: `Game: ${gameName}
-Mechanic: ${mechanic}
-Target Network: ${targetNetwork}
-Colors: primary=${primaryColor}, secondary=${secondaryColor}
-Time limit: ${timeLimit}s
-
-Output ONLY this JSON:
-{"hook":"compelling moment to show","tutorialStep":"first action player takes","winCondition":"what triggers CTA","emotionalTrigger":"curiosity/urgency/satisfaction","ctaText":"4-6 word CTA"}`,
+            model: groq("llama-3.1-8b-instant"), // Fast 8B: just needs short JSON
+            maxOutputTokens: 300,
+            system: `Mobile ad strategist. Output JSON only. No explanation.`,
+            prompt: `Game: ${gameName}, Mechanic: ${mechanic}, Network: ${targetNetwork}, Colors: ${primaryColor}/${secondaryColor}, Time: ${timeLimit}s
+Output ONLY: {"hook":"...","tutorialStep":"...","winCondition":"...","emotionalTrigger":"...","ctaText":"..."}`,
           }),
           generateText({
-            model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
-            maxOutputTokens: 400,
-            system: `You are a mobile UI/UX designer specializing in playable ads. Output a CSS spec as JSON only.`,
-            prompt: `Design a playable ad:
-Game: ${gameName}, Primary: ${primaryColor}, Secondary: ${secondaryColor}
-${hasTemplate ? "Style reference: " + baseTemplateHtml.slice(0, 300) : "Fresh design"}
-
-Output ONLY this JSON:
-{"bgStyle":"CSS background","fontFamily":"font stack","tileStyle":"CSS for tiles","selectedStyle":"CSS for selected tile","overlayBg":"end overlay bg","buttonStyle":"CSS for CTA button"}`,
+            model: groq("llama-3.1-8b-instant"), // Fast 8B: just needs short JSON
+            maxOutputTokens: 300,
+            system: `CSS designer for mobile ads. Output JSON only. No explanation.`,
+            prompt: `Game: ${gameName}, Primary: ${primaryColor}, Secondary: ${secondaryColor}
+Output ONLY: {"bgStyle":"...","tileStyle":"...","selectedStyle":"...","buttonStyle":"...","accentGlow":"..."}`,
           }),
         ]);
 
@@ -157,8 +147,8 @@ BUILD TARGETS:
 Now output the complete polished index.html:`;
 
         const coderStream = streamText({
-          model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
-          maxOutputTokens: 8192,
+          model: groq("llama-3.3-70b-versatile"), // 70B: far superior code generation
+          maxOutputTokens: 8000,
           system: coderSystem,
           prompt: coderPrompt,
         });
