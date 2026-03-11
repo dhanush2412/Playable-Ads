@@ -354,15 +354,14 @@ export default function GeneratePage() {
               <div className="relative" style={{ width: 280 }}>
                 <div className="bg-gray-800 rounded-[2.5rem] p-3 border border-gray-700 shadow-2xl">
                   <div className="bg-black rounded-[2rem] overflow-hidden" style={{ height: 500 }}>
-                    {isLoading && !generatedHtml && (
+                    {isLoading && (
                       <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-6">
                         <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
                         <div className="w-full space-y-2">
                           {(["researcher","designer","coder"] as const).map((phase, i) => {
                             const labels = { researcher: "🔍 Researcher", designer: "🎨 Designer", coder: "💻 Coder" };
                             const order = ["researcher","designer","coder","streaming"];
-                            const phaseIdx = order.indexOf(agentPhase);
-                            const done = phaseIdx > i;
+                            const done = order.indexOf(agentPhase) > i;
                             const active = order.indexOf(agentPhase) === i || (phase === "coder" && agentPhase === "streaming");
                             return (
                               <div key={phase} className={`flex items-center gap-2 text-xs rounded-lg px-3 py-2 transition-all ${active ? "bg-purple-600/30 border border-purple-500/50 text-purple-300" : done ? "bg-gray-800/50 text-green-400" : "bg-gray-800/20 text-gray-600"}`}>
@@ -377,7 +376,7 @@ export default function GeneratePage() {
                         </div>
                       </div>
                     )}
-                    {generatedHtml && (
+                    {!isLoading && generatedHtml && (
                       <iframe
                         srcDoc={generatedHtml}
                         className="w-full h-full border-0"
