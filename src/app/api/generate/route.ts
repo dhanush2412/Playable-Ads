@@ -147,7 +147,7 @@ BUILD TARGETS:
 Now output the complete polished index.html:`;
 
         const coderStream = streamText({
-          model: groq("llama-3.3-70b-versatile"), // 70B: far superior code generation
+          model: groq("meta-llama/llama-4-scout-17b-16e-instruct"), // 30k TPM on Groq free tier
           maxOutputTokens: 8000,
           system: coderSystem,
           prompt: coderPrompt,
