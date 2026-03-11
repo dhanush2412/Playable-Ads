@@ -145,6 +145,11 @@ export default function GeneratePage() {
     } finally {
       setIsLoading(false);
       setAgentPhase("idle");
+      // Strip markdown code fences if model wrapped output in ```html ... ```
+      const fenceMatch = html.match(/```(?:html)?\s*([\s\S]*?)```\s*$/i);
+      if (fenceMatch) html = fenceMatch[1].trim();
+      else html = html.replace(/^```(?:html)?\s*/i, "").trim();
+      if (html) setGeneratedHtml(html);
       if (html) {
         try {
           const saved = JSON.parse(localStorage.getItem("ezyads_exports") || "[]");
