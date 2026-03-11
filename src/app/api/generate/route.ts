@@ -92,36 +92,66 @@ Output ONLY this JSON:
         send("\x01AGENT:coder\x02");
 
         // ── AGENT 3: CODER (streaming) ───────────────────────────────────
-        const coderSystem = hasTemplate
-          ? `You are an expert HTML5 playable ad developer. Adapt the reference template for a new game.
-RULES:
-- Output ONLY complete HTML starting with <!DOCTYPE html>. No markdown, no code fences.
-- Apply the design spec colors and styles throughout
-- Implement the hook, tutorial step, win condition, and CTA text from the brief
-- MRAID CTA: if(typeof mraid!=='undefined') mraid.open(url); else window.open(url,'_blank');
-- All assets inlined. Network limit: ${networkLimit}`
-          : `You are an expert HTML5 playable ad developer. Build a complete, polished playable ad.
-RULES:
-- Output ONLY complete HTML starting with <!DOCTYPE html>. No markdown, no code fences.
-- Implement a 4x4 number grid game where players tap pairs that sum to 10
-- Apply the design spec colors and styles
-- Show tutorial hint (pulsing highlight) on first pair for 2s
-- Game completable in ${timeLimit}s with countdown timer
-- Show end overlay with CTA button when win or time expires
-- MRAID CTA: if(typeof mraid!=='undefined') mraid.open(url); else window.open(url,'_blank');
-- All assets inlined. Network limit: ${networkLimit}`;
+        const coderSystem = `You are a world-class HTML5 playable ad developer. You create stunning, polished, fully-functional single-file playable ads for mobile ad networks.
+
+ABSOLUTE RULES — NEVER BREAK THESE:
+- Output ONLY raw HTML starting with <!DOCTYPE html>. Zero markdown. Zero code fences. Zero explanation.
+- All CSS and JS must be inlined inside the single HTML file. No external resources.
+- MRAID CTA must be: if(typeof mraid!=='undefined') mraid.open(url); else window.open(url,'_blank');
+- Network limit: ${networkLimit}
+
+QUALITY STANDARDS — every ad you output must have ALL of these:
+1. VISUAL POLISH: Rich CSS with gradients, box-shadows, border-radius. Not flat or plain.
+2. ANIMATIONS: Keyframe animations for tile flash (matchFlash), CTA button pulse (ctaPulse), overlay entrance (fadeIn). Use @keyframes.
+3. TUTORIAL: For the first 2 seconds, show a bouncing arrow (↓) or glowing ring on the first valid tile pair. Remove after first tap.
+4. GAME LOOP: 4×4 grid (16 tiles), numbers 1-9, pairs that sum to 10. Timer counts down. Score tracks matches.
+5. END STATE: Semi-transparent overlay slides in on win or timeout. Shows score, emoji, and CTA button with store URL.
+6. RESPONSIVE: Uses viewport units or max-width:360px centering. Looks great at 320×568 (phone).
+7. TYPOGRAPHY: Google Fonts import or system font stack. Bold numbers. Clear score/timer.
+
+${hasTemplate
+  ? `ADAPTATION RULES:
+- Use the reference template's HTML structure, CSS architecture, and JS game logic as the foundation
+- Restyle completely using the design spec (new colors, new gradients, new tile styles)
+- Update all text: game name, CTA text, store URLs, dialogue
+- Keep the working game logic intact — just retheme it`
+  : `CONSTRUCTION RULES:
+- Build a clean, centered layout: header with game name + logo emoji, stats bar (score/pairs/timer), 4×4 grid, footer rule
+- Use the design spec colors for background, tiles, selected state, and CTA
+- Make tiles feel tactile: white card tiles with subtle shadow, selected state uses primary color fill`}`;
 
         const coderPrompt = hasTemplate
-          ? `BRIEF: ${JSON.stringify(brief)}
-DESIGN: ${JSON.stringify(design)}
-REFERENCE:
-<ref>${baseTemplateHtml}</ref>
-Adapt for: ${gameName}, mechanic: ${mechanic}, iOS: ${iosStoreUrl || "https://apps.apple.com"}, Android: ${androidStoreUrl || "https://play.google.com"}, network: ${targetNetwork}
-Output the full adapted index.html:`
-          : `BRIEF: ${JSON.stringify(brief)}
-DESIGN: ${JSON.stringify(design)}
-BUILD: game=${gameName}, mechanic=${mechanic}, primary=${primaryColor}, secondary=${secondaryColor}, time=${timeLimit}s, iOS=${iosStoreUrl || "https://apps.apple.com"}, Android=${androidStoreUrl || "https://play.google.com"}, network=${targetNetwork}
-Output the full index.html:`;
+          ? `RESEARCHER BRIEF: ${JSON.stringify(brief)}
+DESIGNER SPEC: ${JSON.stringify(design)}
+
+REFERENCE TEMPLATE TO ADAPT:
+<reference>
+${baseTemplateHtml}
+</reference>
+
+ADAPTATION TARGETS:
+- Game name: ${gameName}
+- Mechanic description: ${mechanic}
+- Primary color: ${primaryColor}  Secondary color: ${secondaryColor}
+- Timer: ${timeLimit}s
+- iOS store URL: ${iosStoreUrl || "https://apps.apple.com"}
+- Android store URL: ${androidStoreUrl || "https://play.google.com"}
+- Ad network: ${targetNetwork}
+
+Now output the complete adapted index.html:`
+          : `RESEARCHER BRIEF: ${JSON.stringify(brief)}
+DESIGNER SPEC: ${JSON.stringify(design)}
+
+BUILD TARGETS:
+- Game name: ${gameName}
+- Mechanic: ${mechanic}
+- Primary: ${primaryColor}  Secondary: ${secondaryColor}
+- Timer: ${timeLimit}s
+- iOS: ${iosStoreUrl || "https://apps.apple.com"}
+- Android: ${androidStoreUrl || "https://play.google.com"}
+- Network: ${targetNetwork}
+
+Now output the complete polished index.html:`;
 
         const coderStream = streamText({
           model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),

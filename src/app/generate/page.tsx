@@ -40,10 +40,12 @@ export default function GeneratePage() {
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchTemplateHtml = async (templateId: string): Promise<string> => {
-    if (templateId === "none" || templateId === "custom") return "";
+    if (templateId === "custom") return "";
     setLoadingTemplate(true);
+    // "none" falls back to minimal_clean so the AI has a quality base to restyle
+    const fileId = templateId === "none" ? "minimal_clean" : templateId;
     try {
-      const res = await fetch(`/templates/${templateId}.html`);
+      const res = await fetch(`/templates/${fileId}.html`);
       if (!res.ok) return "";
       return await res.text();
     } catch {
@@ -73,7 +75,7 @@ export default function GeneratePage() {
       let baseTemplateHtml = "";
       if (selectedTemplate === "custom") {
         baseTemplateHtml = customHtml;
-      } else if (selectedTemplate !== "none") {
+      } else {
         baseTemplateHtml = await fetchTemplateHtml(selectedTemplate);
       }
 
