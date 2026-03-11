@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
         const [researchResult, designResult] = await Promise.all([
           generateText({
             model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
+            maxOutputTokens: 400,
             system: `You are a mobile ad strategist. Output a concise JSON brief for a playable ad. Be specific and practical.`,
             prompt: `Game: ${gameName}
 Mechanic: ${mechanic}
@@ -59,6 +60,7 @@ Output ONLY this JSON:
           }),
           generateText({
             model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
+            maxOutputTokens: 400,
             system: `You are a mobile UI/UX designer specializing in playable ads. Output a CSS spec as JSON only.`,
             prompt: `Design a playable ad:
 Game: ${gameName}, Primary: ${primaryColor}, Secondary: ${secondaryColor}
@@ -100,14 +102,15 @@ ABSOLUTE RULES — NEVER BREAK THESE:
 - MRAID CTA must be: if(typeof mraid!=='undefined') mraid.open(url); else window.open(url,'_blank');
 - Network limit: ${networkLimit}
 
-QUALITY STANDARDS — every ad you output must have ALL of these:
-1. VISUAL POLISH: Rich CSS with gradients, box-shadows, border-radius. Not flat or plain.
-2. ANIMATIONS: Keyframe animations for tile flash (matchFlash), CTA button pulse (ctaPulse), overlay entrance (fadeIn). Use @keyframes.
-3. TUTORIAL: For the first 2 seconds, show a bouncing arrow (↓) or glowing ring on the first valid tile pair. Remove after first tap.
-4. GAME LOOP: 4×4 grid (16 tiles), numbers 1-9, pairs that sum to 10. Timer counts down. Score tracks matches.
-5. END STATE: Semi-transparent overlay slides in on win or timeout. Shows score, emoji, and CTA button with store URL.
-6. RESPONSIVE: Uses viewport units or max-width:360px centering. Looks great at 320×568 (phone).
-7. TYPOGRAPHY: Google Fonts import or system font stack. Bold numbers. Clear score/timer.
+QUALITY STANDARDS — every ad you output must have ALL of these. Write COMPREHENSIVE, COMPLETE code — do not shorten or truncate:
+1. VISUAL POLISH: Rich CSS with gradients, box-shadows, border-radius, transitions. Not flat or plain. Include hover/active states.
+2. ANIMATIONS: Full @keyframes for matchFlash, ctaPulse, overlayFadeIn, tutorialBounce, scorePopup. Write out every keyframe step.
+3. TUTORIAL: For the first 2 seconds, show a bouncing arrow (↓) AND a glowing ring on the first valid tile pair. Remove after first tap.
+4. GAME LOOP: Complete 4×4 grid (16 tiles), numbers 1-9, pairs that sum to 10. Full timer logic. Score with bonus. Combo multiplier.
+5. END STATE: Overlay with slide-in animation. Show final score, pairs cleared, time remaining, and prominent CTA button.
+6. RESPONSIVE: max-width:360px centered. Looks great at 320×568. Font sizes use clamp() or vw units.
+7. TYPOGRAPHY: System font stack. Bold tile numbers. Animated score counter.
+8. COMPLETENESS: Output the ENTIRE file — every CSS rule, every JS function, every HTML element. Never truncate.
 
 ${hasTemplate
   ? `ADAPTATION RULES:
@@ -155,6 +158,7 @@ Now output the complete polished index.html:`;
 
         const coderStream = streamText({
           model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
+          maxOutputTokens: 8192,
           system: coderSystem,
           prompt: coderPrompt,
         });
