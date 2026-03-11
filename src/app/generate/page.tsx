@@ -37,6 +37,7 @@ export default function GeneratePage() {
   const [error, setError] = useState("");
   const [charCount, setCharCount] = useState(0);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [agentPhase, setAgentPhase] = useState<"idle" | "researcher" | "designer" | "coder" | "streaming">("idle");
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -76,12 +77,12 @@ export default function GeneratePage() {
     setGeneratedHtml("");
     setCharCount(0);
     setIsLoading(true);
+    setAgentPhase("idle");
 
     abortRef.current = new AbortController();
     let html = "";
 
     try {
-      // Get base template HTML
       let baseTemplateHtml = "";
       if (selectedTemplate === "custom") {
         baseTemplateHtml = customHtml;
@@ -108,13 +109,45 @@ export default function GeneratePage() {
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
-      html = "";
+      let buffer = "";
+
+      // Parse agent status events (\x01AGENT:name\x02) mixed into the stream
+      const processBuffer = (buf: string): string => {
+        const eventRe = /\x01(AGENT|ERROR):([^\x02]*)\x02/g;
+        let last = 0;
+        let match;
+        let htmlChunk = "";
+        while ((match = eventRe.exec(buf)) !== null) {
+          htmlChunk += buf.slice(last, match.index);
+          if (match[1] === "AGENT") {
+            setAgentPhase(match[2] as typeof agentPhase);
+          } else if (match[1] === "ERROR") {
+            setError(match[2]);
+          }
+          last = match.index + match[0].length;
+        }
+        htmlChunk += buf.slice(last);
+        return htmlChunk;
+      };
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        html += chunk;
+        buffer += decoder.decode(value, { stream: true });
+        // Only flush once we're past any buffered event sequences
+        const safe = buffer.replace(/\x01[^\x02]*$/, "");
+        const remainder = buffer.slice(safe.length);
+        const htmlPart = processBuffer(safe);
+        html += htmlPart;
+        buffer = remainder;
+        if (html) {
+          setGeneratedHtml(html);
+          setCharCount(html.length);
+        }
+      }
+      // Flush remainder
+      if (buffer) {
+        html += processBuffer(buffer);
         setGeneratedHtml(html);
         setCharCount(html.length);
       }
@@ -124,6 +157,7 @@ export default function GeneratePage() {
       }
     } finally {
       setIsLoading(false);
+      setAgentPhase("idle");
       if (html) {
         try {
           const saved = JSON.parse(localStorage.getItem("ezyads_exports") || "[]");
@@ -309,7 +343,12 @@ export default function GeneratePage() {
             <div className="flex gap-3">
               <button onClick={handleGenerate} disabled={isLoading || loadingTemplate}
                 className="flex-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors">
-                {loadingTemplate ? "Loading template..." : isLoading ? "Generating..." : "✨ Generate Ad"}
+                {loadingTemplate ? "Loading template..." : isLoading ? (
+                  agentPhase === "researcher" ? "🔍 Researching..." :
+                  agentPhase === "designer" ? "🎨 Designing..." :
+                  (agentPhase === "coder" || agentPhase === "streaming") ? "💻 Coding..." :
+                  "✨ Starting agents..."
+                ) : "✨ Generate Ad"}
               </button>
               {isLoading && (
                 <button onClick={handleStop} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-xl transition-colors text-sm">
@@ -342,10 +381,26 @@ export default function GeneratePage() {
                 <div className="bg-gray-800 rounded-[2.5rem] p-3 border border-gray-700 shadow-2xl">
                   <div className="bg-black rounded-[2rem] overflow-hidden" style={{ height: 500 }}>
                     {isLoading && !generatedHtml && (
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-gray-500">
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-6">
                         <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-xs">Generating your ad...</p>
-                        <p className="text-xs text-gray-600">{charCount.toLocaleString()} chars</p>
+                        <div className="w-full space-y-2">
+                          {(["researcher","designer","coder"] as const).map((phase, i) => {
+                            const labels = { researcher: "🔍 Researcher", designer: "🎨 Designer", coder: "💻 Coder" };
+                            const order = ["researcher","designer","coder","streaming"];
+                            const phaseIdx = order.indexOf(agentPhase);
+                            const done = phaseIdx > i;
+                            const active = order.indexOf(agentPhase) === i || (phase === "coder" && agentPhase === "streaming");
+                            return (
+                              <div key={phase} className={`flex items-center gap-2 text-xs rounded-lg px-3 py-2 transition-all ${active ? "bg-purple-600/30 border border-purple-500/50 text-purple-300" : done ? "bg-gray-800/50 text-green-400" : "bg-gray-800/20 text-gray-600"}`}>
+                                <span>{done ? "✓" : active ? "⟳" : "○"}</span>
+                                <span>{labels[phase]}</span>
+                                {active && agentPhase === "streaming" && phase === "coder" && (
+                                  <span className="ml-auto text-gray-400">{charCount.toLocaleString()} chars</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                     {generatedHtml && (
