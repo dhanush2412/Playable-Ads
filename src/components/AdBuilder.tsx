@@ -144,26 +144,7 @@ export default function AdBuilder({ template }: Props) {
                   <p className="text-sm text-gray-300 leading-relaxed">{template.description}</p>
                 </Section>
 
-                <Section title="How It Works">
-                  <div className="space-y-3 text-sm text-gray-400">
-                    <div className="flex gap-3">
-                      <span className="text-lg shrink-0">1.</span>
-                      <p>A <span className="text-white font-medium">hand pointer</span> guides the player to valid number pairs in the grid.</p>
-                    </div>
-                    <div className="flex gap-3">
-                      <span className="text-lg shrink-0">2.</span>
-                      <p>The player taps two numbers that are <span className="text-blue-400 font-medium">equal</span> or <span className="text-green-400 font-medium">sum to 10</span> to clear them.</p>
-                    </div>
-                    <div className="flex gap-3">
-                      <span className="text-lg shrink-0">3.</span>
-                      <p>The camera <span className="text-white font-medium">auto-zooms</span> and pans to follow the hint hand to each pair.</p>
-                    </div>
-                    <div className="flex gap-3">
-                      <span className="text-lg shrink-0">4.</span>
-                      <p>After <span className="text-white font-medium">6 matches</span>, an end card appears with the app icon and a <span className="text-green-400 font-medium">&quot;Play Now&quot;</span> CTA button.</p>
-                    </div>
-                  </div>
-                </Section>
+
 
                 <Section title="Ad Specs">
                   <div className="grid grid-cols-2 gap-2 text-xs">
@@ -200,14 +181,7 @@ export default function AdBuilder({ template }: Props) {
                   </div>
                 </Section>
 
-                <Section title="How to Use">
-                  <ol className="space-y-2 text-xs text-gray-400 list-decimal list-inside">
-                    <li>Click <span className="text-purple-400 font-medium">Export index.html</span> above to download.</li>
-                    <li>Upload the single HTML file to your ad network (Meta, Google UAC, AppLovin, IronSource).</li>
-                    <li>The CTA button links to the <span className="text-blue-400">SumLink Play Store</span> page.</li>
-                    <li>To change the store URL, edit the <code className="bg-gray-800 px-1 rounded text-gray-300">STORE_URL</code> variable in the HTML.</li>
-                  </ol>
-                </Section>
+
               </>
             ) : (
               <>
