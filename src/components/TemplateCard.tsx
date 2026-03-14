@@ -8,6 +8,7 @@ interface Props {
 }
 
 const HOOK_ICONS: Record<string, string> = {
+  "Hand guides valid pairs with zoom": "🔍",
   "Tutorial hand guides first match": "👆",
   "Countdown timer creates urgency": "⏱️",
   "Simple arrow points to first move": "➡️",

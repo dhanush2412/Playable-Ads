@@ -15,6 +15,23 @@ export interface Template {
 
 export const templates: Template[] = [
   {
+    id: "sumlink-playable",
+    name: "Sum Link — Playable",
+    theme: "Clean White Grid",
+    hookStyle: "Hand guides valid pairs with zoom",
+    primaryColor: "#ffffff",
+    secondaryColor: "#2860d0",
+    description:
+      "Production-ready Sum Link playable ad. 7-column number grid with auto-zoom that follows the hint hand. Players tap pairs that match or sum to 10. Blue sparkle effects, emoji decorations on cleared cells, green/pink feedback pills, and a polished end card with CTA. MRAID-compliant, under 15KB.",
+    uiHtml: "<!-- sumlink_playable -->",
+    hookJs: "",
+    logicSlotJs: `function isMatch(val1, val2) {
+  return val1 === val2 || val1 + val2 === 10;
+}`,
+    comingSoon: false,
+    templateFile: "sumlink_playable",
+  },
+  {
     id: "wizard-sumlink",
     name: "Wizard SumLink",
     theme: "Dark Purple Magic",

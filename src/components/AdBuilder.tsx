@@ -27,6 +27,8 @@ interface Props {
 }
 
 export default function AdBuilder({ template }: Props) {
+  const isStandalone = !!template.templateFile;
+
   const [config, setConfig] = useState<AdConfig>({
     ...DEFAULT_CONFIG,
     primaryColor: template.primaryColor,
@@ -39,11 +41,24 @@ export default function AdBuilder({ template }: Props) {
   const [fileSizeKB, setFileSizeKB] = useState(0);
   const [exported, setExported] = useState(false);
 
+  // Load standalone template file from public/templates/
+  useEffect(() => {
+    if (isStandalone) {
+      fetch(`/templates/${template.templateFile}.html`)
+        .then((r) => r.text())
+        .then((html) => {
+          setPreviewHtml(html);
+          setFileSizeKB(getFileSizeKB(html));
+        });
+    }
+  }, [isStandalone, template.templateFile]);
+
   const updatePreview = useCallback(() => {
+    if (isStandalone) return; // standalone templates load from file
     const html = generateAdHtml(template, config);
     setPreviewHtml(html);
     setFileSizeKB(getFileSizeKB(html));
-  }, [template, config]);
+  }, [template, config, isStandalone]);
 
   useEffect(() => {
     updatePreview();
@@ -54,7 +69,7 @@ export default function AdBuilder({ template }: Props) {
   }
 
   function handleExport() {
-    const html = generateAdHtml(template, config);
+    const html = isStandalone ? previewHtml : generateAdHtml(template, config);
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -120,95 +135,170 @@ export default function AdBuilder({ template }: Props) {
 
       {/* Main area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left panel: Form */}
+        {/* Left panel */}
         <div className="w-80 border-r border-gray-800 overflow-y-auto bg-gray-950 flex-shrink-0">
           <div className="p-5 space-y-5">
-            <Section title="Game Info">
-              <Field label="Game Name">
-                <Input value={config.gameName} onChange={(v) => handleChange("gameName", v)} placeholder="SumLink" />
-              </Field>
-              <Field label="Android Store URL">
-                <Input value={config.androidStoreUrl} onChange={(v) => handleChange("androidStoreUrl", v)} placeholder="https://play.google.com/..." />
-              </Field>
-              <Field label="iOS Store URL">
-                <Input value={config.iosStoreUrl} onChange={(v) => handleChange("iosStoreUrl", v)} placeholder="https://apps.apple.com/..." />
-              </Field>
-            </Section>
+            {isStandalone ? (
+              <>
+                <Section title="About This Ad">
+                  <p className="text-sm text-gray-300 leading-relaxed">{template.description}</p>
+                </Section>
 
-            <Section title="Visual Theme">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Primary Color">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={config.primaryColor}
-                      onChange={(e) => handleChange("primaryColor", e.target.value)}
-                      className="w-8 h-8 rounded cursor-pointer border border-gray-700 bg-transparent"
-                    />
-                    <span className="text-xs text-gray-400 font-mono">{config.primaryColor}</span>
+                <Section title="How It Works">
+                  <div className="space-y-3 text-sm text-gray-400">
+                    <div className="flex gap-3">
+                      <span className="text-lg shrink-0">1.</span>
+                      <p>A <span className="text-white font-medium">hand pointer</span> guides the player to valid number pairs in the grid.</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <span className="text-lg shrink-0">2.</span>
+                      <p>The player taps two numbers that are <span className="text-blue-400 font-medium">equal</span> or <span className="text-green-400 font-medium">sum to 10</span> to clear them.</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <span className="text-lg shrink-0">3.</span>
+                      <p>The camera <span className="text-white font-medium">auto-zooms</span> and pans to follow the hint hand to each pair.</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <span className="text-lg shrink-0">4.</span>
+                      <p>After <span className="text-white font-medium">6 matches</span>, an end card appears with the app icon and a <span className="text-green-400 font-medium">&quot;Play Now&quot;</span> CTA button.</p>
+                    </div>
                   </div>
-                </Field>
-                <Field label="Accent Color">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={config.secondaryColor}
-                      onChange={(e) => handleChange("secondaryColor", e.target.value)}
-                      className="w-8 h-8 rounded cursor-pointer border border-gray-700 bg-transparent"
-                    />
-                    <span className="text-xs text-gray-400 font-mono">{config.secondaryColor}</span>
+                </Section>
+
+                <Section title="Ad Specs">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-gray-900 rounded-lg p-3">
+                      <div className="text-gray-500 mb-1">Size</div>
+                      <div className="text-white font-semibold">{fileSizeKB.toFixed(1)} KB</div>
+                    </div>
+                    <div className="bg-gray-900 rounded-lg p-3">
+                      <div className="text-gray-500 mb-1">Format</div>
+                      <div className="text-white font-semibold">Single HTML</div>
+                    </div>
+                    <div className="bg-gray-900 rounded-lg p-3">
+                      <div className="text-gray-500 mb-1">MRAID</div>
+                      <div className="text-green-400 font-semibold">Compliant</div>
+                    </div>
+                    <div className="bg-gray-900 rounded-lg p-3">
+                      <div className="text-gray-500 mb-1">CTA Target</div>
+                      <div className="text-white font-semibold">Play Store</div>
+                    </div>
                   </div>
-                </Field>
-              </div>
-            </Section>
+                </Section>
 
-            <Section title="Game Logic">
-              <Field label="Match Rule (shown to player)">
-                <Input value={config.matchRule} onChange={(v) => handleChange("matchRule", v)} placeholder="Match numbers to 10!" />
-              </Field>
-              <Field label="Win Condition">
-                <Input value={config.winCondition} onChange={(v) => handleChange("winCondition", v)} placeholder="Clear all pairs" />
-              </Field>
-              <Field label="Time Limit (seconds)">
-                <input
-                  type="number"
-                  value={config.timeLimit}
-                  onChange={(e) => handleChange("timeLimit", Number(e.target.value))}
-                  className="w-full bg-gray-800 border border-gray-700 text-white text-sm px-3 py-2 rounded-lg"
-                  min={5} max={60}
-                />
-              </Field>
-            </Section>
+                <Section title="Compatible Networks">
+                  <div className="space-y-2 text-xs">
+                    {Object.entries(NETWORK_LIMITS).map(([key, val]) => {
+                      const ok = fileSizeKB * 1024 <= val.maxBytes;
+                      return (
+                        <div key={key} className="flex items-center justify-between bg-gray-900 rounded-lg px-3 py-2">
+                          <span className="text-gray-300 capitalize">{key.replace("_", " ")}</span>
+                          <span className={ok ? "text-green-400" : "text-red-400"}>{ok ? "OK" : "Over limit"}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Section>
 
-            {/* Code editor toggle */}
-            <div>
-              <button
-                onClick={() => setShowEditor(!showEditor)}
-                className="w-full text-left flex items-center justify-between text-sm font-semibold text-gray-300 hover:text-white py-2 border-t border-gray-800 transition-colors"
-              >
-                <span>⚡ Advanced: Game Logic Code</span>
-                <span className="text-gray-600">{showEditor ? "▲" : "▼"}</span>
-              </button>
-              {showEditor && (
-                <div className="mt-3 rounded-xl overflow-hidden border border-gray-700">
-                  <MonacoEditor
-                    height="220px"
-                    language="javascript"
-                    theme="vs-dark"
-                    value={config.customLogic}
-                    onChange={(v) => handleChange("customLogic", v || "")}
-                    options={{
-                      minimap: { enabled: false },
-                      fontSize: 12,
-                      lineNumbers: "off",
-                      scrollBeyondLastLine: false,
-                      wordWrap: "on",
-                      padding: { top: 8, bottom: 8 },
-                    }}
-                  />
+                <Section title="How to Use">
+                  <ol className="space-y-2 text-xs text-gray-400 list-decimal list-inside">
+                    <li>Click <span className="text-purple-400 font-medium">Export index.html</span> above to download.</li>
+                    <li>Upload the single HTML file to your ad network (Meta, Google UAC, AppLovin, IronSource).</li>
+                    <li>The CTA button links to the <span className="text-blue-400">SumLink Play Store</span> page.</li>
+                    <li>To change the store URL, edit the <code className="bg-gray-800 px-1 rounded text-gray-300">STORE_URL</code> variable in the HTML.</li>
+                  </ol>
+                </Section>
+              </>
+            ) : (
+              <>
+                <Section title="Game Info">
+                  <Field label="Game Name">
+                    <Input value={config.gameName} onChange={(v) => handleChange("gameName", v)} placeholder="SumLink" />
+                  </Field>
+                  <Field label="Android Store URL">
+                    <Input value={config.androidStoreUrl} onChange={(v) => handleChange("androidStoreUrl", v)} placeholder="https://play.google.com/..." />
+                  </Field>
+                  <Field label="iOS Store URL">
+                    <Input value={config.iosStoreUrl} onChange={(v) => handleChange("iosStoreUrl", v)} placeholder="https://apps.apple.com/..." />
+                  </Field>
+                </Section>
+
+                <Section title="Visual Theme">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Primary Color">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={config.primaryColor}
+                          onChange={(e) => handleChange("primaryColor", e.target.value)}
+                          className="w-8 h-8 rounded cursor-pointer border border-gray-700 bg-transparent"
+                        />
+                        <span className="text-xs text-gray-400 font-mono">{config.primaryColor}</span>
+                      </div>
+                    </Field>
+                    <Field label="Accent Color">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={config.secondaryColor}
+                          onChange={(e) => handleChange("secondaryColor", e.target.value)}
+                          className="w-8 h-8 rounded cursor-pointer border border-gray-700 bg-transparent"
+                        />
+                        <span className="text-xs text-gray-400 font-mono">{config.secondaryColor}</span>
+                      </div>
+                    </Field>
+                  </div>
+                </Section>
+
+                <Section title="Game Logic">
+                  <Field label="Match Rule (shown to player)">
+                    <Input value={config.matchRule} onChange={(v) => handleChange("matchRule", v)} placeholder="Match numbers to 10!" />
+                  </Field>
+                  <Field label="Win Condition">
+                    <Input value={config.winCondition} onChange={(v) => handleChange("winCondition", v)} placeholder="Clear all pairs" />
+                  </Field>
+                  <Field label="Time Limit (seconds)">
+                    <input
+                      type="number"
+                      value={config.timeLimit}
+                      onChange={(e) => handleChange("timeLimit", Number(e.target.value))}
+                      className="w-full bg-gray-800 border border-gray-700 text-white text-sm px-3 py-2 rounded-lg"
+                      min={5} max={60}
+                    />
+                  </Field>
+                </Section>
+
+                {/* Code editor toggle */}
+                <div>
+                  <button
+                    onClick={() => setShowEditor(!showEditor)}
+                    className="w-full text-left flex items-center justify-between text-sm font-semibold text-gray-300 hover:text-white py-2 border-t border-gray-800 transition-colors"
+                  >
+                    <span>Advanced: Game Logic Code</span>
+                    <span className="text-gray-600">{showEditor ? "▲" : "▼"}</span>
+                  </button>
+                  {showEditor && (
+                    <div className="mt-3 rounded-xl overflow-hidden border border-gray-700">
+                      <MonacoEditor
+                        height="220px"
+                        language="javascript"
+                        theme="vs-dark"
+                        value={config.customLogic}
+                        onChange={(v) => handleChange("customLogic", v || "")}
+                        options={{
+                          minimap: { enabled: false },
+                          fontSize: 12,
+                          lineNumbers: "off",
+                          scrollBeyondLastLine: false,
+                          wordWrap: "on",
+                          padding: { top: 8, bottom: 8 },
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
         </div>
 

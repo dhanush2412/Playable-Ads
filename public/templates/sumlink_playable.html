@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="ad.size" content="width=320,height=480">
+<title>Sum Link - Playable Ad</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI','Helvetica Neue',Arial,sans-serif;user-select:none;-webkit-user-select:none;background:#f8f8f8}
+#gc{width:100%;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;max-width:420px;margin:0 auto;background:#fff}
+
+/* ── HEADER ── */
+#hdr{padding:12px 14px 4px;display:flex;align-items:center;z-index:10;background:#fff}
+#lp{display:inline-flex;align-items:center;gap:8px;background:rgba(55,62,80,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:5px 14px 5px 6px;border-radius:18px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+#li{width:30px;height:30px;border-radius:6px;background:#fff;display:grid;grid-template-columns:repeat(3,1fr);gap:0;padding:2px;flex-shrink:0}
+.ln{font-size:6.5px;font-weight:800;color:#444;display:flex;align-items:center;justify-content:center;background:#f0f3f8;border-radius:1.5px;line-height:1}
+.ln.hi{background:#c2d8ff;color:#2f63d4}
+.ln.fd{color:#aaa;background:#f5f5f5}
+#lt{font-size:15px;font-weight:700;color:#fff;white-space:nowrap}
+#q{font-size:clamp(15px,4.5vw,19px);font-weight:800;color:#1a1a2e;padding:6px 14px 8px;text-align:center;letter-spacing:-.3px;background:#fff}
+
+/* ── GRID ── */
+#gw{flex:1;overflow:hidden;position:relative;background:#fff}
+#gr{display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid #e2e2e2;border-left:1px solid #e2e2e2;transform-origin:0 0;will-change:transform}
+.c{display:flex;align-items:center;justify-content:center;font-size:clamp(24px,7.5vw,40px);font-weight:800;color:#1a1a2e;background:#fff;cursor:pointer;position:relative;border-right:1px solid #e2e2e2;border-bottom:1px solid #e2e2e2;aspect-ratio:1;transition:background .12s,color .12s;-webkit-font-smoothing:antialiased;letter-spacing:-1px}
+.c:active:not(.clr){background:#e8f0ff}
+.c.sel{background:#d0e4ff;color:#2860d0}
+.c.wrong{background:#ffe0df;color:#c44}
+.c.clr{color:#c8c8c8;cursor:default;background:#fff}
+.c .ej{position:absolute;font-size:clamp(11px,3.5vw,16px);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:2}
+
+/* ── SPARKLE EFFECT ── */
+.sparkle{position:absolute;pointer-events:none;z-index:20}
+.spark{position:absolute;opacity:0}
+.spark.dot{border-radius:50%;background:#5bc0f5;animation:sparkDot .55s ease-out forwards}
+.spark.star{animation:sparkStar .6s ease-out forwards}
+.spark.star::before,.spark.star::after{content:'';position:absolute;background:#5bc0f5;border-radius:1px}
+.spark.star::before{width:2px;height:10px;left:4px;top:0}
+.spark.star::after{width:10px;height:2px;left:0;top:4px}
+@keyframes sparkDot{0%{transform:scale(0);opacity:1}50%{opacity:.7}100%{transform:scale(1.5);opacity:0}}
+@keyframes sparkStar{0%{transform:scale(0) rotate(0deg);opacity:1}50%{opacity:.8}100%{transform:scale(1.2) rotate(45deg);opacity:0}}
+
+/* ── BLUE LINK (hourglass connecting two matched cells) ── */
+.link-line{position:absolute;pointer-events:none;z-index:18;opacity:0;animation:linkFade .7s ease forwards}
+.link-line svg{width:100%;height:100%}
+@keyframes linkFade{0%{opacity:0;transform:scale(.5)}20%{opacity:1;transform:scale(1.05)}80%{opacity:1}100%{opacity:0;transform:scale(1)}}
+
+/* ── HUD ── */
+#hud{padding:6px 14px 10px;text-align:center;z-index:10;min-height:50px;display:flex;flex-direction:column;align-items:center;gap:4px;background:#fff}
+#pill{display:inline-block;padding:6px 26px;border-radius:20px;font-size:16px;font-weight:700;opacity:0;transition:opacity .2s;white-space:nowrap}
+#pill.s{opacity:1}
+#pill.ok{background:#4cd964;color:#fff}
+#pill.no{background:#f5c6c4;color:#8b3a38}
+#pbar{width:65%;height:4px;background:#e8e8e8;border-radius:2px;overflow:hidden;margin-top:2px}
+#pfill{height:100%;background:#4cd964;width:0%;transition:width .5s ease;border-radius:2px}
+
+/* ── CTA ── */
+#cta{display:none;position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#4cd964;color:#fff;border:none;padding:14px 42px;border-radius:26px;font-size:17px;font-weight:700;cursor:pointer;z-index:100;box-shadow:0 4px 16px rgba(76,217,100,.45);animation:ctaP 1.8s infinite;letter-spacing:.2px;white-space:nowrap}
+@keyframes ctaP{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.06)}}
+
+/* ── END CARD ── */
+#end{display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:90;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:#fff}
+#end.s{display:flex;animation:endIn .6s ease}
+@keyframes endIn{0%{opacity:0}100%{opacity:1}}
+.ghn{position:absolute;font-size:min(140px,32vw);font-weight:800;color:rgba(180,200,220,.08);pointer-events:none;font-family:inherit}
+#eiw{z-index:1;display:flex;flex-direction:column;align-items:center;gap:16px;animation:eiZ .7s cubic-bezier(.3,1.4,.6,1) forwards}
+#ei{width:min(120px,30vw);height:min(120px,30vw);border-radius:24px;background:#fff;box-shadow:0 0 60px rgba(100,160,240,.25),0 8px 30px rgba(74,108,247,.1);display:flex;align-items:center;justify-content:center}
+#eig{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;width:65%;height:65%}
+.ec{display:flex;align-items:center;justify-content:center;font-size:min(16px,4vw);font-weight:700;color:#333;border-radius:3px}
+.ec.wb{background:#fff}
+.ec.bl{background:#c8deff;color:#2f63d4}
+#et{font-size:min(32px,8vw);font-weight:800;color:#2c3e50;letter-spacing:-.5px}
+@keyframes eiZ{0%{transform:scale(0);opacity:0}65%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+
+/* ── HAND ── */
+#hand{position:fixed;font-size:28px;z-index:30;pointer-events:none;opacity:0;filter:drop-shadow(0 2px 5px rgba(0,0,0,.18));transition:left .35s ease,top .35s ease,opacity .25s}
+@keyframes hintBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+</style>
+</head>
+<body>
+<div id="gc">
+  <div id="hdr">
+    <div id="lp">
+      <div id="li">
+        <div class="ln">2</div><div class="ln">3</div><div class="ln" style="visibility:hidden"></div>
+        <div class="ln fd">9</div><div class="ln hi">7</div><div class="ln hi">7</div>
+        <div class="ln">9</div><div class="ln">8</div><div class="ln">7</div>
+      </div>
+      <span id="lt">Sum Link</span>
+    </div>
+  </div>
+  <div id="q">Is it a pair or a sum of 10?</div>
+  <div id="gw"><div id="gr"></div><span id="hand">👆</span></div>
+  <div id="hud">
+    <div id="pill"></div>
+    <div id="pbar"><div id="pfill"></div></div>
+  </div>
+  <button id="cta" onclick="handleCTA()">Play Now — Free!</button>
+  <div id="end">
+    <div class="ghn" style="top:5%;right:-8%;transform:rotate(-12deg)">7</div>
+    <div class="ghn" style="top:38%;left:-6%;transform:rotate(8deg)">3</div>
+    <div class="ghn" style="bottom:12%;right:5%;transform:rotate(-5deg)">9</div>
+    <div id="eiw">
+      <div id="ei">
+        <div id="eig">
+          <div class="ec bl">6</div><div class="ec wb">9</div><div class="ec wb">1</div>
+          <div class="ec wb">4</div><div class="ec wb">5</div><div class="ec wb">5</div>
+          <div class="ec bl">7</div><div class="ec bl">7</div><div class="ec bl">7</div>
+        </div>
+      </div>
+      <div id="et">Sum Link</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var COLS=7,STORE_URL="https://play.google.com/store/apps/details?id=com.ezgamers.sumlink";
+
+// ── FULL GRID DATA (from video frames, 7x18 = 126 cells) ──
+var SRC=[
+// Row 0-5 (top section, from frames 14/17)
+  4,7,8,6,6,3,4,
+  7,8,1,9,4,7,4,
+  2,4,7,8,4,5,3,
+  2,5,3,1,1,3,7,
+  9,5,8,2,9,8,4,
+  8,7,2,3,6,2,7,
+// Row 6-11 (mid section, from frames 04/05/10/11)
+  6,6,3,4,3,4,2,
+  9,4,7,4,2,4,8,
+  8,4,5,3,2,3,7,
+  1,1,3,7,2,8,1,
+  2,9,8,4,5,5,9,
+  3,6,2,7,9,4,1,
+// Row 12-17 (bottom section, from frames 00/06)
+  9,8,7,5,8,5,6,
+  3,4,8,6,2,9,3,
+  7,5,6,6,1,9,4,
+  4,7,5,7,5,2,1,
+  7,6,4,6,6,5,5,
+  6,3,7,6,4,6,5
+];
+
+var g=[],sel=null,mc=0,over=false,hintPair=null,hintCell=0;
+var zoom=1,scrollY=0,scrollX=0;
+var $g,$p,$pf,$h,$cta,$end,$gw;
+var TOTAL_MATCHES=6;
+
+function init(){
+  $g=document.getElementById("gr");
+  $p=document.getElementById("pill");
+  $pf=document.getElementById("pfill");
+  $h=document.getElementById("hand");
+  $cta=document.getElementById("cta");
+  $end=document.getElementById("end");
+  $gw=document.getElementById("gw");
+  buildGrid();
+  // Find first valid pair and point hand there
+  setTimeout(function(){findAndHint();},600);
+}
+
+function buildGrid(){
+  $g.innerHTML="";
+  g=SRC.slice();
+  for(var i=0;i<g.length;i++){
+    var d=document.createElement("div");
+    d.className="c";d.textContent=g[i];d.dataset.i=i;
+    d.addEventListener("click",onClick);
+    $g.appendChild(d);
+  }
+}
+
+// Find a valid adjacent pair (right neighbor or below neighbor)
+function findPair(){
+  var rows=Math.floor(g.length/COLS);
+  for(var r=0;r<rows;r++){
+    for(var c=0;c<COLS;c++){
+      var i=r*COLS+c;
+      if(g[i]===0)continue;
+      // Check right neighbor
+      if(c<COLS-1){var j=i+1;if(g[j]!==0&&(g[i]===g[j]||g[i]+g[j]===10))return [i,j];}
+      // Check below neighbor
+      if(r<rows-1){var k=i+COLS;if(g[k]!==0&&(g[i]===g[k]||g[i]+g[k]===10))return [i,k];}
+    }
+  }
+  return null;
+}
+
+function calcZoomPos(cellIdx){
+  var cellEl=$g.children[cellIdx];
+  var cellH=cellEl.offsetHeight,cellW=cellEl.offsetWidth;
+  var row=Math.floor(cellIdx/COLS),col=cellIdx%COLS;
+  var gwH=$gw.offsetHeight,gwW=$gw.offsetWidth;
+  var tz=1.45;
+  var visH=gwH/tz,visW=gwW/tz;
+  var tsy=Math.max(0,row*cellH - visH/2 + cellH/2);
+  var tsx=Math.max(0,col*cellW - visW/2 + cellW/2);
+  return {sy:tsy,sx:tsx,z:tz};
+}
+
+function findAndHint(){
+  hintPair=findPair();
+  hintCell=0;
+  if(!hintPair){$h.style.opacity="0";return;}
+  var p=calcZoomPos(hintPair[0]);
+  animateToPos(p.sy,p.z,450,function(){
+    pointHand($g.children[hintPair[0]]);
+  },p.sx);
+}
+
+// ── ZOOM & SCROLL ──
+function scrollTo(rowTarget,z){
+  zoom=z;
+  var cellH=$g.children[0]?$g.children[0].offsetHeight:50;
+  scrollY=Math.max(0,rowTarget*cellH);
+  applyTx();
+}
+
+function applyTx(){
+  $g.style.transform="scale("+zoom+") translate("+(-scrollX)+"px,"+(-scrollY)+"px)";
+}
+
+function animateTo(targetRow,targetZoom,dur,cb){
+  var cellH=$g.children[0]?$g.children[0].offsetHeight:50;
+  animateToPos(Math.max(0,targetRow*cellH),targetZoom,dur,cb);
+}
+
+function animateToPos(targetSY,targetZoom,dur,cb,targetSX){
+  var startSY=scrollY,startSX=scrollX,startZ=zoom,startT=Date.now();
+  var tsx=targetSX||0;
+  dur=dur||500;
+  function step(){
+    var t=Math.min(1,(Date.now()-startT)/dur);
+    var e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    scrollY=startSY+(targetSY-startSY)*e;
+    scrollX=startSX+(tsx-startSX)*e;
+    zoom=startZ+(targetZoom-startZ)*e;
+    applyTx();
+    if(t<1)requestAnimationFrame(step);
+    else{scrollY=targetSY;scrollX=tsx;zoom=targetZoom;applyTx();if(cb)cb();}
+  }
+  requestAnimationFrame(step);
+}
+
+// ── PINCH ZOOM + SCROLL (user interaction) ──
+var pinchDist=0,isPinch=false,dragX=0,dragY=0,dragSX=0,dragSY=0,isDrag=false;
+function setupTouch(){
+  $gw.addEventListener("touchstart",function(e){
+    if(over)return;var t=e.touches;
+    if(t.length===2){isPinch=true;pinchDist=Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);e.preventDefault();}
+    else if(t.length===1){isDrag=true;dragX=t[0].clientX;dragY=t[0].clientY;dragSX=scrollX;dragSY=scrollY;}
+  },{passive:false});
+  $gw.addEventListener("touchmove",function(e){
+    if(over)return;var t=e.touches;
+    if(isPinch&&t.length===2){e.preventDefault();var nd=Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);zoom=Math.max(.5,Math.min(1.6,zoom*(nd/pinchDist)));pinchDist=nd;applyTx();}
+    else if(isDrag&&t.length===1&&!isPinch){e.preventDefault();scrollX=Math.max(0,dragSX+(dragX-t[0].clientX)/zoom);scrollY=Math.max(0,dragSY+(dragY-t[0].clientY)/zoom);applyTx();}
+  },{passive:false});
+  $gw.addEventListener("touchend",function(e){if(e.touches.length<2)isPinch=false;if(e.touches.length===0)isDrag=false;});
+  // Mouse wheel
+  $gw.addEventListener("wheel",function(e){
+    if(over)return;e.preventDefault();
+    if(e.ctrlKey){zoom=Math.max(.5,Math.min(1.6,zoom*(e.deltaY>0?.94:1.06)));applyTx();}
+    else if(e.shiftKey){scrollX=Math.max(0,scrollX+e.deltaY/zoom);applyTx();}
+    else{scrollY=Math.max(0,scrollY+e.deltaY/zoom);applyTx();}
+  },{passive:false});
+}
+
+// ── HINT SYSTEM ──
+function pointHand(el){
+  var r=el.getBoundingClientRect();
+  $h.style.left=(r.left+r.width/2-14)+"px";
+  $h.style.top=(r.top+r.height-4)+"px";
+  $h.style.opacity="1";
+  $h.style.animation="hintBounce 1s ease-in-out infinite";
+}
+
+function zoomToCell(cellIdx,cb){
+  var p=calcZoomPos(cellIdx);
+  animateToPos(p.sy,p.z,300,cb,p.sx);
+}
+
+function checkHint(idx){
+  if(!hintPair)return;
+  if(idx===hintPair[0]&&hintCell===0){
+    hintCell=1;
+    setTimeout(function(){
+      zoomToCell(hintPair[1],function(){pointHand($g.children[hintPair[1]]);});
+    },200);
+  } else if(idx===hintPair[1]&&hintCell===0){
+    hintCell=1;
+    setTimeout(function(){
+      zoomToCell(hintPair[0],function(){pointHand($g.children[hintPair[0]]);});
+    },200);
+  }
+}
+
+// ── SPARKLE EFFECT (blue dots + 4-pointed stars) ──
+function sparkle(el){
+  var r=el.getBoundingClientRect(),wr=$gw.getBoundingClientRect();
+  var cx=r.left-wr.left+r.width/2,cy=r.top-wr.top+r.height/2;
+
+  for(var i=0;i<6;i++){
+    var d=document.createElement("div");d.className="sparkle";
+    d.style.left=cx+"px";d.style.top=cy+"px";
+    $gw.appendChild(d);
+
+    // Blue dots
+    var dot=document.createElement("div");dot.className="spark dot";
+    var sz=4+Math.random()*6;
+    var ang=(Math.PI*2/6)*i+(Math.random()-.5)*.5;
+    var dist=15+Math.random()*20;
+    dot.style.width=sz+"px";dot.style.height=sz+"px";
+    dot.style.left=(Math.cos(ang)*dist-sz/2)+"px";
+    dot.style.top=(Math.sin(ang)*dist-sz/2)+"px";
+    dot.style.animationDelay=(Math.random()*.1)+"s";
+    d.appendChild(dot);
+
+    // 4-pointed star on every other
+    if(i%2===0){
+      var star=document.createElement("div");star.className="spark star";
+      var a2=(Math.PI*2/3)*i+.5;
+      var d2=10+Math.random()*18;
+      star.style.width="10px";star.style.height="10px";
+      star.style.left=(Math.cos(a2)*d2-5)+"px";
+      star.style.top=(Math.sin(a2)*d2-5)+"px";
+      star.style.animationDelay=(.05+Math.random()*.1)+"s";
+      d.appendChild(star);
+    }
+
+    (function(el2){setTimeout(function(){el2.remove();},800);})(d);
+  }
+}
+
+function addEmoji(el){
+  var em=document.createElement("span");em.className="ej";
+  em.textContent=Math.random()>.3?"😎":"🤩";
+  el.appendChild(em);
+}
+
+// ── USER INTERACTION ──
+function onClick(e){
+  if(over)return;
+  var cell=e.currentTarget,idx=parseInt(cell.dataset.i);
+  if(cell.classList.contains("clr"))return;
+
+  // Track hint
+  checkHint(idx);
+
+  if(sel===null){sel={i:idx,el:cell,v:g[idx]};cell.classList.add("sel");return;}
+  if(sel.i===idx){cell.classList.remove("sel");sel=null;return;}
+
+  var v1=sel.v,v2=g[idx],pair=(v1===v2),s10=(v1+v2===10),ok=pair||s10;
+  if(ok){
+    cell.classList.add("sel");var a=sel.el,b=cell;sel=null;
+    showPill(pair?"A pair!":"Sum of 10!",true);
+    mc++;$pf.style.width=Math.min(100,(mc/TOTAL_MATCHES)*100)+"%";
+    setTimeout(function(){sparkle(a);sparkle(b);},200);
+    setTimeout(function(){
+      a.classList.remove("sel");b.classList.remove("sel");
+      a.classList.add("clr");b.classList.add("clr");
+      a.textContent="";b.textContent="";
+      g[parseInt(a.dataset.i)]=0;g[parseInt(b.dataset.i)]=0;
+      if(Math.random()>.4)addEmoji(a);
+      if(Math.random()>.6)addEmoji(b);
+      // Find next pair and point hand
+      setTimeout(findAndHint,400);
+    },650);
+    if(mc>=TOTAL_MATCHES){over=true;setTimeout(endCard,1400);}
+  } else {
+    cell.classList.add("sel");var pr=sel.el;sel=null;
+    showPill("No, it's not a pair!",false);
+    setTimeout(function(){pr.classList.remove("sel");cell.classList.remove("sel");},450);
+  }
+}
+
+// ── FEEDBACK PILL ──
+function showPill(t,ok){
+  $p.textContent=t;$p.className=(ok?"ok":"no")+" s";$p.id="pill";
+  clearTimeout(showPill._t);
+  showPill._t=setTimeout(function(){$p.classList.remove("s");},1600);
+}
+
+// ── END CARD ──
+function endCard(){$end.classList.add("s");$cta.style.display="block";}
+
+// ── CTA ──
+window.handleCTA=function(){
+  if(typeof mraid!=="undefined")mraid.open(STORE_URL);
+  else window.open(STORE_URL,"_blank");
+};
+
+// ── MRAID ──
+if(typeof mraid!=="undefined"){
+  if(mraid.getState()==="loading"){
+    mraid.addEventListener("ready",function(){
+      mraid.addEventListener("viewableChange",function(v){if(v){init();setupTouch();}});
+      if(mraid.isViewable()){init();setupTouch();}
+    });
+  }else{
+    if(mraid.isViewable()){init();setupTouch();}
+    else mraid.addEventListener("viewableChange",function(v){if(v){init();setupTouch();}});
+  }
+}else{
+  document.addEventListener("DOMContentLoaded",function(){init();setupTouch();});
+}
+
+})();
+</script>
+</body>
+</html>
