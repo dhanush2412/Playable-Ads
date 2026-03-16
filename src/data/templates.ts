@@ -32,6 +32,23 @@ export const templates: Template[] = [
     templateFile: "sumlink_playable",
   },
   {
+    id: "sumlink-autodemo-v1",
+    name: "Sum Link — Auto Demo (IQ Hook)",
+    theme: "Newspaper × Auto-Play",
+    hookStyle: "Govt IQ narrative → game plays itself",
+    primaryColor: "#ffffff",
+    secondaryColor: "#1a1a2e",
+    description:
+      "Non-interactive auto-demo. Opens with newspaper story: 'Govt Identifies High-IQ Citizens Through Number Challenge'. Game plays itself — hand auto-selects pairs with zoom, sparkles, and pills. No user interaction needed. Ideal for video-style ad placements.",
+    uiHtml: "<!-- sumlink_autodemo_v1 -->",
+    hookJs: "",
+    logicSlotJs: `function isMatch(val1, val2) {
+  return val1 === val2 || val1 + val2 === 10;
+}`,
+    comingSoon: false,
+    templateFile: "sumlink_autodemo_v1",
+  },
+  {
     id: "wizard-sumlink",
     name: "Wizard SumLink",
     theme: "Dark Purple Magic",
