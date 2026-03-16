@@ -18,9 +18,11 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 #intro-title{font-family:'Georgia','Times New Roman',serif;font-size:clamp(18px,5vw,26px);font-weight:700;color:#1a1a1a;line-height:1.25;letter-spacing:-.3px}
 #intro-btn{position:absolute;bottom:15%;left:50%;transform:translateX(-50%);z-index:3;background:#1a1a2e;color:#fff;border:none;padding:14px 32px;border-radius:26px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:introP 2s infinite;white-space:nowrap}
 @keyframes introP{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.05)}}
-#intro.zooming #intro-img{filter:blur(0);transition:filter .4s ease}
-#intro.zooming #intro-headline{opacity:0;transition:opacity .3s ease}
-#intro.zooming #intro-btn{opacity:0;transition:opacity .2s ease}
+#intro.clearing #intro-img{filter:blur(0);transition:filter .5s ease}
+#intro.clearing #intro-btn{opacity:0;transition:opacity .3s ease}
+#intro.clearing #intro-headline{opacity:0;transition:opacity .4s ease .2s}
+#intro.zooming #intro-img{transition:transform 1.8s cubic-bezier(.25,.85,.3,1)}
+#intro.fading{opacity:0;transition:opacity .5s ease}
 #intro.done{display:none}
 
 /* ── GAME CONTAINER ── */
@@ -150,24 +152,29 @@ var COLS=7,STORE_URL="https://play.google.com/store/apps/details?id=com.ezgamers
 window.startZoom=function(){
   var intro=document.getElementById("intro");
   var img=document.getElementById("intro-img");
-  intro.classList.add("zooming");
 
-  // Zoom toward bottom-right where the number grid is in the newspaper
-  // Grid is roughly at 65% from left, 55% from top in the image
-  img.style.transition="transform 1.4s cubic-bezier(.25,.9,.3,1), filter .4s ease";
-  img.style.transformOrigin="68% 58%";
-  img.style.transform="scale(8)";
+  // Step 1: Clear blur, hide button + headline (0.5s)
+  intro.classList.add("clearing");
 
-  // Crossfade to game
+  // Step 2: After blur clears, zoom into the number grid area (bottom-right of newspaper)
+  setTimeout(function(){
+    img.style.transformOrigin="76% 55%";
+    intro.classList.add("zooming");
+    img.style.transform="scale(12)";
+  },600);
+
+  // Step 3: Near end of zoom, fade intro out and show game underneath
   setTimeout(function(){
     document.getElementById("gc").classList.add("show");
-  },800);
+    intro.classList.add("fading");
+  },2000);
 
+  // Step 4: Remove intro, start game
   setTimeout(function(){
     intro.classList.add("done");
     init();
     setupTouch();
-  },1400);
+  },2500);
 };
 
 // ── FULL GRID DATA (from video frames, 7x18 = 126 cells) ──
