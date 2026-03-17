@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>SumLink - Hindi Newspaper</title>
+<style>
+body,html{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#000;font-family:sans-serif}
+#game-container{position:relative;width:100%;height:100%;background:#eee}
+#np-wrap{position:absolute;width:100%;height:100%;overflow:hidden}
+#np{position:absolute;width:100%;height:auto;transform-origin:0 0;transition:transform 1.5s ease-in-out}
+#overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;display:none}
+#pill{position:absolute;background:#fff;border-radius:20px;box-shadow:0 4px 10px rgba(0,0,0,0.3);padding:10px 20px;font-weight:700;font-size:18px;color:#333;display:flex;align-items:center;opacity:0;transition:opacity 0.5s,transform 0.5s;transform:translate(-50%,20px)}
+#pill.s{opacity:1;transform:translate(-50%,0)}
+#pill img{height:30px;margin-right:10px}
+#grid-container{position:absolute;display:none;opacity:0;transition:opacity 0.5s}
+#grid-container.s{display:block;opacity:1}
+.cell{position:absolute;background:rgba(255,255,255,0.01);border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;color:#333;cursor:pointer}
+.line{position:absolute;background:rgba(255,100,0,0.6);height:6px;border-radius:3px;transform-origin:0 50%;pointer-events:none;z-index:10}
+.sparkle{position:absolute;width:40px;height:40px;background:radial-gradient(circle,#fff 0%,rgba(255,255,255,0) 70%);border-radius:50%;pointer-events:none;z-index:20;opacity:0}
+#cta{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:#ff9000;color:#fff;padding:12px 40px;border-radius:30px;font-size:20px;font-weight:700;text-decoration:none;box-shadow:0 4px 15px rgba(0,0,0,0.4);animation:pulse 1.5s infinite;display:none}
+#end{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#end.s{display:flex}
+#end h1{color:#fff;font-size:32px;margin-bottom:20px}
+@keyframes pulse{0%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.05)}100%{transform:translateX(-50%) scale(1)}}
+</style>
+</head>
+<body>
+<div id="game-container">
+  <div id="np-wrap">
+    <img id="np" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAEAAAAAAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAK7AkcDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqLj900LhMZHytI8bLgepUA8E9ecf7Ty1OK5Wnpq9eqttG/yrN6Ndy3w9mj0dktF9jyXl2XXdadD+x/Rf+Clf7D3hnRZI9K/aG+Gl3qD22JUt7zVMSsRmOJEGlhwVfEm8sGRlDn5QQfhb49ftxfBXX9A8UazpHxt0nxddatpmp2ukeG/D01/d3L6nqNlcWUeZIrCKJIIPNVp2knBCKSyuRiv53rH4NxSHzSltpzkAFpki8tGHIjKIsjcflx5TBiwU4Ukj2Dwp8LLGwWOIT6VFF5gmMkOpwwESf8tCsJs2hZpcnG+3JQjKsDXLj89w9OmlSmm0rfDJW28rfK/TWx35XwpiPbwqV2pR502tPeWjs3ql+n3nFaFYeFbKANdzXY+zXEkryLqLI0qXc7PIpSOZXLJM48tmj4jyzbSyivatBtvCUkdy1gdXdEChybiaZCSMja0sjIepyVAPY8V1Vn4c8I20arqVvcPHbBo4zbRWdxbvJcFVOfszwXB2Iu6BnJEbNctMZmlg+zaVzpPhbT7Bk06612KO3ygSC6ax3h/n3SORdMcMQAFjbAxzgGvgsXi5Yqo5NqTb32dm1fr0t/XX9Gw2CdCmowXLyL3Y3WqVtO2muj003uzy680HQ5biSTzNSXcehOT+Zaitua2hZy0Z8RyIQCHXxIoBznjEtgj5Huo9qKuMoqMVzK/Kluuy8/Nfec86Dc5O28n59V/Xb8bf/9k=">
+  </div>
+  <div id="overlay">
+    <div id="pill"><img src="https://sumlink.app/icon.png"><span>पहेली खेल खेलने वालों का स्कोर 40% अधिक — उनका दिमाग पहले से ही इसके लिए तैयार है</span></div>
+  </div>
+  <div id="grid-container"></div>
+  <a id="cta" href="javascript:handleCTA()">अभी खेलें</a>
+  <div id="end">
+    <h1>शानदार!</h1>
+    <a href="javascript:handleCTA()" style="background:#ff9000;color:#fff;padding:15px 50px;border-radius:40px;font-size:24px;font-weight:700;text-decoration:none">अभी स्थापित करें</a>
+  </div>
+</div>
+
+<script>
+(function(){
+var RATIO = 1.199;
+var SRC=[4,7,8,6,6,3,4, 7,8,1,9,4,7,4, 5,2,3,5,1,4,2,
+         1,3,5,7,9,2,4, 9,1,2,3,5,8,1, 3,6,9,2,4,6,7, 2,4,6,8,0,2,4];
+var COLS=7, TOTAL=6;
+var STORE_URL="https://play.google.com/store/apps/details?id=com.ezgamers.sumlink";
+
+var $np = document.getElementById('np');
+var $grid = document.getElementById('grid-container');
+var $pill = document.getElementById('pill');
+var $cta = document.getElementById('cta');
+var $end = document.getElementById('end');
+
+function imgW(){ return window.innerWidth; }
+function imgH(){ return window.innerWidth * RATIO; }
+
+function setNpTransform(s, tx, ty, anim) {
+  $np.style.transition = anim ? 'transform 1.5s ease-in-out' : 'none';
+  $np.style.transform = 'scale('+s+') translate('+tx+'px,'+ty+'px)';
+}
+
+function run(){
+  var sw = window.innerWidth, sh = window.innerHeight;
+  var ty0 = (sh - imgH()) / 2;
+  setNpTransform(1, 0, ty0, false);
+
+  setTimeout(function(){
+    var cx = sw*0.30, cy = imgH()*0.30, zs = 1.2;
+    var tx = sw*0.5/zs - cx, ty = sh*0.5/zs - cy;
+    setNpTransform(zs, tx, ty, true);
+  }, 1500);
+
+  setTimeout(function(){
+    document.getElementById('overlay').style.display='block';
+    $pill.style.left = '50%';
+    $pill.style.top = '20%';
+    $pill.classList.add('s');
+  }, 4100);
+
+  setTimeout(function(){
+    var cx = sw*0.67, cy = imgH()*0.60, zs3 = 2.5;
+    var tx3 = sw*0.5/zs3 - cx, ty3 = sh*0.5/zs3 - cy;
+    $pill.classList.remove('s');
+    $np.style.transition = 'transform 2s ease-in-out';
+    $np.style.transform = 'scale('+zs3+') translate('+tx3+'px,'+ty3+'px)';
+  }, 12000);
+
+  setTimeout(function(){
+    posGrid();
+    $grid.classList.add('s');
+    autoPlay();
+  }, 14500);
+}
+
+function posGrid(){
+  var sw = window.innerWidth, sh = window.innerHeight;
+  var gl = sw*0.47, gt = sh*0.32, gw = sw*0.50, gh = sh*0.58;
+  $grid.style.left = gl+'px'; $grid.style.top = gt+'px';
+  $grid.style.width = gw+'px'; $grid.style.height = gh+'px';
+  buildGrid(gw, gh);
+}
+
+function buildGrid(w, h){
+  $grid.innerHTML = '';
+  var rows = Math.ceil(SRC.length/COLS);
+  var cw = w/COLS, ch = h/rows;
+  for(var i=0; i<SRC.length; i++){
+    var d = document.createElement('div');
+    d.className = 'cell';
+    d.style.width = cw+'px'; d.style.height = ch+'px';
+    d.style.left = (i%COLS)*cw+'px'; d.style.top = Math.floor(i/COLS)*ch+'px';
+    d.innerHTML = SRC[i];
+    d.id = 'c'+i;
+    $grid.appendChild(d);
+  }
+}
+
+function autoPlay(){
+  setTimeout(function(){ runPair(1, 15); }, 500);
+  setTimeout(function(){ runPair(2, 3); }, 2500);
+  setTimeout(function(){ runPair(10, 17); }, 4500);
+  setTimeout(function(){ $cta.style.display='block'; showEnd(); }, 6500);
+}
+
+function runPair(i1, i2){
+  var c1 = document.getElementById('c'+i1), c2 = document.getElementById('c'+i2);
+  var r1 = c1.getBoundingClientRect(), r2 = c2.getBoundingClientRect();
+  var x1 = r1.left+r1.width/2, y1 = r1.top+r1.height/2;
+  var x2 = r2.left+r2.width/2, y2 = r2.top+r2.height/2;
+  
+  var line = document.createElement('div');
+  line.className = 'line';
+  var dist = Math.hypot(x2-x1, y2-y1);
+  var ang = Math.atan2(y2-y1, x2-x1) * 180 / Math.PI;
+  line.style.width = '0px';
+  line.style.left = x1+'px'; line.style.top = y1+'px';
+  line.style.transform = 'rotate('+ang+'deg)';
+  document.body.appendChild(line);
+  
+  setTimeout(function(){
+    line.style.transition = 'width 0.5s ease-in-out';
+    line.style.width = dist+'px';
+  }, 50);
+  
+  setTimeout(function(){
+    sparkle(x2, y2);
+    line.style.opacity = '0';
+    c1.style.visibility = 'hidden'; c2.style.visibility = 'hidden';
+  }, 600);
+}
+
+function sparkle(x, y){
+  var s = document.createElement('div');
+  s.className = 'sparkle';
+  s.style.left = (x-20)+'px'; s.style.top = (y-20)+'px';
+  document.body.appendChild(s);
+  setTimeout(function(){ s.style.opacity='1'; s.style.transform='scale(2)'; }, 50);
+  setTimeout(function(){ s.remove(); }, 500);
+}
+
+function showEnd(){ $end.classList.add('s'); }
+
+window.handleCTA = function(){
+  if(typeof mraid !== 'undefined') mraid.open(STORE_URL);
+  else window.open(STORE_URL, '_blank');
+};
+
+window.onload = run;
+})();
+</script>
+</body>
+</html>
