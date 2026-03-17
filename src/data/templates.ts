@@ -66,6 +66,23 @@ export const templates: Template[] = [
     templateFile: "sumlink_autodemo_v2",
   },
   {
+    id: "sumlink-autodemo-v3",
+    name: "Sum Link — Newspaper + Voice (Auto)",
+    theme: "Govt IQ × Voice Narration × Auto-Play",
+    hookStyle: "Zoom to article → voice narrates → game plays itself",
+    primaryColor: "#f5f0e0",
+    secondaryColor: "#1a1a2e",
+    description:
+      "Full cinematic newspaper ad. Shows headline, zooms into the puzzle gamer article with highlighted text, plays AI voice narration, then pans to grid and auto-plays the game. Zero interaction needed.",
+    uiHtml: "<!-- sumlink_autodemo_v3 -->",
+    hookJs: "",
+    logicSlotJs: `function isMatch(val1, val2) {
+  return val1 === val2 || val1 + val2 === 10;
+}`,
+    comingSoon: false,
+    templateFile: "sumlink_autodemo_v3",
+  },
+  {
     id: "wizard-sumlink",
     name: "Wizard SumLink",
     theme: "Dark Purple Magic",
