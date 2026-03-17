@@ -83,6 +83,40 @@ export const templates: Template[] = [
     templateFile: "sumlink_autodemo_v3",
   },
   {
+    id: "sumlink-autodemo-v4",
+    name: "Sum Link — Tamil Newspaper (Auto)",
+    theme: "தினத்தணி × Auto-Play",
+    hookStyle: "Tamil IQ narrative → game plays itself",
+    primaryColor: "#f5f0e0",
+    secondaryColor: "#1a1a2e",
+    description:
+      "Tamil-language newspaper auto-demo. Shows தினத்தணி with Govt IQ screening story in Tamil, zooms to article, then game plays itself. Zero interaction needed.",
+    uiHtml: "<!-- sumlink_autodemo_v4 -->",
+    hookJs: "",
+    logicSlotJs: `function isMatch(val1, val2) {
+  return val1 === val2 || val1 + val2 === 10;
+}`,
+    comingSoon: false,
+    templateFile: "sumlink_autodemo_v4",
+  },
+  {
+    id: "sumlink-autodemo-v5",
+    name: "Sum Link — Hindi Newspaper (Auto)",
+    theme: "दैनिक भास्कर × Auto-Play",
+    hookStyle: "Hindi IQ narrative → game plays itself",
+    primaryColor: "#f5f0e0",
+    secondaryColor: "#1a1a2e",
+    description:
+      "Hindi-language newspaper auto-demo. Shows दैनिक भास्कर with Govt IQ screening story in Hindi, zooms to article, then game plays itself. Zero interaction needed.",
+    uiHtml: "<!-- sumlink_autodemo_v5 -->",
+    hookJs: "",
+    logicSlotJs: `function isMatch(val1, val2) {
+  return val1 === val2 || val1 + val2 === 10;
+}`,
+    comingSoon: false,
+    templateFile: "sumlink_autodemo_v5",
+  },
+  {
     id: "wizard-sumlink",
     name: "Wizard SumLink",
     theme: "Dark Purple Magic",
