@@ -130,7 +130,7 @@ function run(){
 
   // PHASE 2 (1.5s): zoom to 'Studies show puzzle game players...' line
   setTimeout(function(){
-    var zs = 1.5;
+    var zs = 1.15;
     var cx = iw * 0.25;   // left article column
     var cy = sh * 0.53;   // 'Studies show...' line
     var tx = sw * 0.5 / zs - cx;
@@ -156,14 +156,14 @@ function run(){
     var panX = -(iw - sw);
     $np.style.transition = 'transform 2s cubic-bezier(.4,0,.2,1)';
     $np.style.transform = 'translateX('+panX+'px)';
-  }, 9000);
+  }, 12000);
 
   // PHASE 4 (11.5s): show game grid, start auto-play
   setTimeout(function(){
     posGrid(sw, sh);
     $go.style.opacity = '1';
     setTimeout(startAutoPlay, 600);
-  }, 11500);
+  }, 14500);
 }
 
 function posHighlight(l,t,w,h){
