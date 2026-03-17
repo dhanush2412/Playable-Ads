@@ -49,6 +49,23 @@ export const templates: Template[] = [
     templateFile: "sumlink_autodemo_v1",
   },
   {
+    id: "sumlink-autodemo-v2",
+    name: "Sum Link — Newspaper Reader (Auto)",
+    theme: "Govt IQ Newspaper × Auto-Play",
+    hookStyle: "Newspaper pans to grid → game plays itself",
+    primaryColor: "#f5f0e0",
+    secondaryColor: "#1a1a2e",
+    description:
+      "Full newspaper reading experience. Shows 'The Daily Times' with Govt IQ screening story, auto-pans to the puzzle grid, then game plays itself. Zero interaction needed. Designed for video-style ad placements.",
+    uiHtml: "<!-- sumlink_autodemo_v2 -->",
+    hookJs: "",
+    logicSlotJs: `function isMatch(val1, val2) {
+  return val1 === val2 || val1 + val2 === 10;
+}`,
+    comingSoon: false,
+    templateFile: "sumlink_autodemo_v2",
+  },
+  {
     id: "wizard-sumlink",
     name: "Wizard SumLink",
     theme: "Dark Purple Magic",
