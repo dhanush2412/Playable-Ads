@@ -122,27 +122,24 @@ function run(){
   var sw=window.innerWidth, sh=window.innerHeight;
   var iw=imgW();
 
-  // ── PHASE 1: show full newspaper (0-1.5s) ──
-  // Scale to fit width
+  // PHASE 1: show full newspaper (0-1.5s)
   var s0 = sw/iw;
   setNpTransform(s0, 0, 0, false);
 
-  // ── PHASE 2 (1.5s): zoom to article about puzzle gamers ──
-  // Article "Studies show puzzle game players score 40% higher" is at ~10% x, ~35% y of image
+  // PHASE 2 (1.5s): zoom to article
   setTimeout(function(){
-    $np
     var zs = 1.5;
-    var cx = iw * 0.25; var cy = sh * 0.37;
-    var tx = sw * 0.5 / zs - cx; var ty = sh * 0.40 / zs - cy;
-    // After zoom: we want artX,artY to appear at 50%,35% of screen
-    var tx = -(artX - (sw*0.5)/zs);
-    var ty = -(artY - (sh*0.35)/zs);
+    var cx = iw * 0.25;
+    var cy = sh * 0.37;
+    var tx = sw * 0.5 / zs - cx;
+    var ty = sh * 0.40 / zs - cy;
     $np.style.transition = 'transform 2.5s cubic-bezier(.4,0,.2,1)';
-    .style.transition='transform 2.5s cubic-bezier(.4,0,.2,1)'; .style.transform='scale('+zs+') translate('+tx+'px,'+ty+'px)';
+    $np.style.transform = 'scale('+zs+') translate('+tx+'px,'+ty+'px)';
 
-    // show highlight box over the key sentence
+    // show highlight + voice after zoom settles
     setTimeout(function(){
-      var hlTop=zs*(cy+ty)-20; posHighlight(0,hlTop,sw,40);
+      var hlTop = zs*(cy+ty) - 20;
+      posHighlight(0, hlTop, sw, 40);
       $hl.classList.add('show');
       $cap.textContent = '"Studies show puzzle game players score 40% higher — their brains are already wired for it"';
       $cap.classList.add('show');
@@ -150,19 +147,16 @@ function run(){
     }, 2600);
   }, 1500);
 
-  // ── PHASE 3 (9s): zoom to grid ──
+  // PHASE 3 (9s): pan to grid
   setTimeout(function(){
     $hl.classList.remove('show');
     $cap.classList.remove('show');
-    $np.style.transition = 'transform 2s cubic-bezier(.4,0,.2,1)';
-    // Grid is at ~63% x, ~28% y of image
-    
-    
     var panX = -(iw - sw);
+    $np.style.transition = 'transform 2s cubic-bezier(.4,0,.2,1)';
     $np.style.transform = 'translateX('+panX+'px)';
   }, 9000);
 
-  // ── PHASE 4 (11.5s): show game grid, start auto-play ──
+  // PHASE 4 (11.5s): show game grid, start auto-play
   setTimeout(function(){
     posGrid(sw, sh);
     $go.style.opacity = '1';
