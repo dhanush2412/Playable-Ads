@@ -122,17 +122,19 @@ function run(){
   var sw=window.innerWidth, sh=window.innerHeight;
   var iw=imgW();
 
-  // PHASE 1: show full newspaper (0-1.5s)
+  // PHASE 1: show full newspaper centered (0-1.5s)
   var s0 = sw/iw;
-  setNpTransform(s0, 0, 0, false);
+  // center vertically: scaled height = s0*sh, offset = (sh - s0*sh)/2
+  var ty0 = sh*(1-s0)/(2*s0);
+  setNpTransform(s0, 0, ty0, false);
 
-  // PHASE 2 (1.5s): zoom to article
+  // PHASE 2 (1.5s): zoom to 'Studies show puzzle game players...' line
   setTimeout(function(){
     var zs = 1.5;
-    var cx = iw * 0.25;
-    var cy = sh * 0.37;
+    var cx = iw * 0.25;   // left article column
+    var cy = sh * 0.44;   // 'Studies show...' line (below subheadline)
     var tx = sw * 0.5 / zs - cx;
-    var ty = sh * 0.40 / zs - cy;
+    var ty = sh * 0.45 / zs - cy;
     $np.style.transition = 'transform 2.5s cubic-bezier(.4,0,.2,1)';
     $np.style.transform = 'scale('+zs+') translate('+tx+'px,'+ty+'px)';
 
