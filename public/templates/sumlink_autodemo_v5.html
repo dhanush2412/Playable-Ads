@@ -7,7 +7,7 @@
 <title>Sum Link - Hindi Newspaper</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-user-select:none}
-html,body{width:100%;height:100%;overflow:hidden;background:#3a3528}
+html,body{width:100%;height:100%;overflow:hidden;background:#e8e0cc}
 #stage{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden}
 #np{position:absolute;top:0;left:0;width:100%;height:auto;transform-origin:0 0;transition:transform 0s}
 #highlight{position:absolute;border:3px solid #e8c84a;border-radius:4px;box-shadow:0 0 0 2000px rgba(0,0,0,.45);opacity:0;transition:opacity .5s;pointer-events:none;z-index:10}
@@ -111,7 +111,7 @@ function run(){
   // PHASE 2 (1.5s): zoom to Hindi article subheadline
   // Target: "\u092A\u0939\u0947\u0932\u0940 \u0916\u0947\u0932 \u0916\u0947\u0932\u0928\u0947 \u0935\u093E\u0932\u094B\u0902 \u0915\u093E \u0938\u094D\u0915\u094B\u0930 40% \u0905\u0927\u093F\u0915" line at ~28% down
   setTimeout(function(){
-    var zs = 1.15;
+    var zs = 1.05;
     var cx = sw * 0.25;
     var cy = ih * 0.38;
     var tx = sw * 0.5 / zs - cx;
