@@ -7,7 +7,7 @@
 <title>Sum Link - Hindi Newspaper</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-user-select:none}
-html,body{width:100%;height:100%;overflow:hidden;background:#f5f0e0}
+html,body{width:100%;height:100%;overflow:hidden;background:#3a3528}
 #stage{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden}
 #np{position:absolute;top:0;left:0;width:100%;height:auto;transform-origin:0 0;transition:transform 0s}
 #highlight{position:absolute;border:3px solid #e8c84a;border-radius:4px;box-shadow:0 0 0 2000px rgba(0,0,0,.45);opacity:0;transition:opacity .5s;pointer-events:none;z-index:10}
@@ -113,7 +113,7 @@ function run(){
   setTimeout(function(){
     var zs = 1.15;
     var cx = sw * 0.25;
-    var cy = ih * 0.28;
+    var cy = ih * 0.38;
     var tx = sw * 0.5 / zs - cx;
     var ty = sh * 0.45 / zs - cy;
     $np.style.transition = "transform 2.5s cubic-bezier(.4,0,.2,1)";
