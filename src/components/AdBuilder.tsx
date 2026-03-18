@@ -279,11 +279,9 @@ export default function AdBuilder({ template }: Props) {
         {/* Right panel: Live preview */}
         <div className="flex-1 bg-gray-900 flex flex-col items-center justify-center p-6">
           <p className="text-gray-600 text-xs mb-4 uppercase tracking-widest">Live Preview</p>
-          <div className="relative" style={{ width: 393, height: 852 }}>
+          <div className="relative" style={{ width: 340, height: 720 }}>
             {/* Phone frame */}
-            <div className="absolute inset-0 rounded-[50px] border-[3px] border-gray-600 bg-black overflow-hidden shadow-2xl">
-              {/* Dynamic Island */}
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-[120px] h-[34px] bg-black rounded-full z-10" />
+            <div className="absolute inset-0 rounded-[40px] border-4 border-gray-700 bg-black overflow-hidden shadow-2xl">
               {previewHtml ? (
                 <iframe
                   srcDoc={previewHtml}
@@ -298,7 +296,7 @@ export default function AdBuilder({ template }: Props) {
               )}
             </div>
           </div>
-          <p className="text-gray-700 text-xs mt-4">393 × 852 — iPhone 15 Pro</p>
+          <p className="text-gray-700 text-xs mt-4">375 × 667 — iPhone SE</p>
         </div>
       </div>
     </div>
