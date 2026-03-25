@@ -158,13 +158,10 @@ function posHighlight(l,t,w,h){
 }
 
 function posGrid(sw,sh){
-  var gl=sw*0.35, gt=sh*0.30;
-  var gw=sw*0.62, gh=sh*0.58;
-  gl=Math.max(2,gl);
-  $go.style.left=Math.round(gl)+"px";
-  $go.style.top=Math.round(gt)+"px";
-  $go.style.width=Math.round(gw)+"px";
-  $go.style.height=Math.round(gh)+"px";
+  $go.style.left="0px";
+  $go.style.top="0px";
+  $go.style.width=Math.round(sw)+"px";
+  $go.style.height=Math.round(sh)+"px";
 }
 
 function buildGrid(){
