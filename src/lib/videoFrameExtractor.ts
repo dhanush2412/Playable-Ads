@@ -29,25 +29,32 @@ export async function extractLastFrame(
       };
 
       video.onseeked = () => {
-        onProgress?.("Extracting frame...");
+        onProgress?.("Extracting & compressing frame...");
+
+        // Resize to max 512px width to keep base64 small for Groq Vision API
+        const MAX_WIDTH = 512;
+        const scale = video.videoWidth > MAX_WIDTH ? MAX_WIDTH / video.videoWidth : 1;
+        const outW = Math.round(video.videoWidth * scale);
+        const outH = Math.round(video.videoHeight * scale);
+
         const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        canvas.width = outW;
+        canvas.height = outH;
         const ctx = canvas.getContext("2d");
         if (!ctx) {
           reject(new Error("Canvas 2D context not available"));
           return;
         }
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, outW, outH);
 
-        // Get Base64 PNG (strip the data:image/png;base64, prefix)
-        const dataUrl = canvas.toDataURL("image/png");
+        // Use JPEG at 80% quality — much smaller than PNG
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
         const base64 = dataUrl.split(",")[1];
 
         resolve({
           base64,
-          width: video.videoWidth,
-          height: video.videoHeight,
+          width: outW,
+          height: outH,
         });
       };
 
