@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
           send("\x01AGENT:frame-analyzer\x02");
 
           const frameResult = await generateText({
-            model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
+            model: groq("meta-llama/llama-3.2-11b-vision-preview"),
             maxOutputTokens: 1500,
             messages: [
               {
@@ -232,7 +232,21 @@ Now output the complete polished index.html:`;
         }
 
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Generation failed";
+        let msg = "Generation failed";
+        if (err instanceof Error) {
+          msg = err.message;
+          // Surface Groq API error details if available
+          const anyErr = err as Record<string, unknown>;
+          if (anyErr.statusCode) msg = `HTTP ${anyErr.statusCode}: ${msg}`;
+          if (anyErr.responseBody) {
+            try {
+              const body = typeof anyErr.responseBody === "string"
+                ? JSON.parse(anyErr.responseBody)
+                : anyErr.responseBody;
+              if (body?.error?.message) msg = `Groq API: ${body.error.message}`;
+            } catch { /* use original msg */ }
+          }
+        }
         send(`\x01ERROR:${msg}\x02`);
       } finally {
         controller.close();
