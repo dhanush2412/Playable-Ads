@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
           const frameResult = await generateText({
             model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
-            maxOutputTokens: 500,
+            maxOutputTokens: 800,
             messages: [
               {
                 role: "user",
@@ -60,8 +60,27 @@ export async function POST(req: NextRequest) {
                   },
                   {
                     type: "text",
-                    text: `Analyze this screenshot (the last frame of a video ad). Output JSON only:
-{"background":"describe background color/gradient/image","layout":"describe element positions (top/center/bottom)","colors":["#hex1","#hex2","#hex3"],"textElements":[{"text":"...","position":"top-center","size":"large"}],"gameElements":"describe any game UI, grid, buttons visible","style":"overall visual style (minimal/bold/neon/etc)"}`,
+                    text: `You are a pixel-perfect UI analyzer. Analyze this screenshot (the last frame of a video ad) with EXTREME precision. The playable ad must look IDENTICAL to this frame.
+
+Output JSON only with these EXACT details:
+{
+  "backgroundColor": "exact hex color of the background (e.g. #00BFFF)",
+  "gridRows": number of rows of tiles/cards,
+  "gridCols": number of columns of tiles/cards,
+  "tileStyle": "exact description: background color, border-radius in px, shadow, border",
+  "tileTextColor": "exact hex of the number/text color on tiles",
+  "tileTextWeight": "bold/normal/900",
+  "tileTextSize": "approximate size like 32px, 48px etc",
+  "gapBetweenTiles": "approximate gap in px",
+  "tilePadding": "approximate padding inside each tile",
+  "numbers": [[row1 numbers], [row2 numbers], ...],
+  "hasHeader": true/false,
+  "hasTimer": true/false,
+  "hasCTA": true/false,
+  "headerText": "text if visible",
+  "overallStyle": "minimal/bold/neon/etc",
+  "fontFamily": "rounded/system/serif/monospace"
+}`,
                   },
                 ],
               },
@@ -148,14 +167,21 @@ ${hasTemplate
 - Make tiles feel tactile: white card tiles with subtle shadow, selected state uses primary color fill`}
 
 ${frameAnalysis ? `
-VIDEO TRANSITION MATCHING (CRITICAL):
-The user has a lead-in video ad. The playable ad's INITIAL visual state must EXACTLY match the video's last frame for a seamless transition.
-Frame analysis of video's last frame: ${frameAnalysis}
-- Use the SAME background color/gradient as described
-- Position elements in the SAME layout
-- Use the SAME color palette
-- The first thing the user sees must be visually identical to the video's ending
-- After 1 second, elements should animate into interactive gameplay
+PIXEL-PERFECT VIDEO TRANSITION (THIS IS THE #1 PRIORITY):
+The user has a lead-in video. The playable ad must look IDENTICAL to the video's last frame — same background color, same grid size, same tile style, same number layout, same font weight, same spacing. DITTO COPY.
+
+Frame analysis (use these EXACT values): ${frameAnalysis}
+
+MANDATORY RULES FOR VISUAL MATCHING:
+- Use the EXACT backgroundColor from the analysis as body/container background
+- Use the EXACT gridRows x gridCols grid layout
+- Tiles must have the EXACT same style: same background color, same border-radius, same shadow
+- Numbers must use the EXACT same color and font-weight
+- Use the EXACT same gap between tiles
+- If the analysis says no header/timer/CTA initially, start WITHOUT them — add them only after gameplay begins
+- The initial grid numbers MUST match the "numbers" array from the analysis
+- DO NOT add any extra UI elements that aren't in the screenshot
+- After 2 seconds of showing the identical frame, THEN animate into interactive gameplay (add timer, CTA, tutorial hand)
 ` : ""}`;
 
         const coderPrompt = hasTemplate
