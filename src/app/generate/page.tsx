@@ -1,6 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
+
+const VideoUploader = dynamic(() => import("@/components/VideoUploader"), { ssr: false });
 
 const NETWORKS = [
   { id: "meta", label: "Meta (Facebook/Instagram)", limit: "2MB" },
@@ -36,8 +41,35 @@ export default function GeneratePage() {
   const [error, setError] = useState("");
   const [charCount, setCharCount] = useState(0);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
-  const [agentPhase, setAgentPhase] = useState<"idle" | "researcher" | "designer" | "coder" | "streaming">("idle");
+  const [agentPhase, setAgentPhase] = useState<"idle" | "frame-analyzer" | "researcher" | "designer" | "coder" | "streaming">("idle");
   const abortRef = useRef<AbortController | null>(null);
+  const [videoMode, setVideoMode] = useState(false);
+  const [videoFrameBase64, setVideoFrameBase64] = useState("");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoEnded, setVideoEnded] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleFrameExtracted = useCallback((data: {
+    base64: string;
+    width: number;
+    height: number;
+    videoFile: File;
+    videoUrl: string;
+  }) => {
+    setVideoFrameBase64(data.base64);
+    setVideoFile(data.videoFile);
+    setVideoUrl(data.videoUrl);
+    setVideoEnded(false);
+  }, []);
+
+  const handleVideoClear = useCallback(() => {
+    setVideoFrameBase64("");
+    setVideoFile(null);
+    if (videoUrl) URL.revokeObjectURL(videoUrl);
+    setVideoUrl("");
+    setVideoEnded(false);
+  }, [videoUrl]);
 
   const fetchTemplateHtml = async (templateId: string): Promise<string> => {
     if (templateId === "custom") return "";
@@ -85,6 +117,7 @@ export default function GeneratePage() {
         body: JSON.stringify({
           gameName, iosStoreUrl, androidStoreUrl, targetNetwork,
           mechanic, primaryColor, secondaryColor, timeLimit, baseTemplateHtml,
+          videoFrameBase64: videoMode ? videoFrameBase64 : undefined,
         }),
         signal: abortRef.current.signal,
       });
@@ -185,6 +218,20 @@ export default function GeneratePage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadVideo = () => {
+    if (!videoFile) return;
+    saveAs(videoFile, videoFile.name);
+  };
+
+  const handleDownloadZip = async () => {
+    if (!generatedHtml || !videoFile) return;
+    const zip = new JSZip();
+    zip.file("index.html", generatedHtml);
+    zip.file(videoFile.name, videoFile);
+    const blob = await zip.generateAsync({ type: "blob" });
+    saveAs(blob, `${gameName.replace(/\s+/g, "-").toLowerCase() || "playable-ad"}-bundle.zip`);
+  };
+
   const sizeKB = Math.round(new Blob([generatedHtml]).size / 1024);
   const limitKB = targetNetwork === "meta" || targetNetwork === "ironsource" ? 2048 : 5120;
   const sizePercent = Math.min((sizeKB / limitKB) * 100, 100);
@@ -200,6 +247,42 @@ export default function GeneratePage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left — Form */}
           <div className="space-y-6">
+
+            {/* Video + Playable Mode */}
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold flex items-center gap-2">
+                  <span>🎬</span> Video + Playable Mode
+                </h2>
+                <button
+                  onClick={() => {
+                    setVideoMode(!videoMode);
+                    if (videoMode) handleVideoClear();
+                  }}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${
+                    videoMode ? "bg-purple-600" : "bg-gray-700"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                      videoMode ? "translate-x-5" : ""
+                    }`}
+                  />
+                </button>
+              </div>
+              {videoMode && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-500">
+                    Upload a lead-in video. AI will analyze the last frame and generate a
+                    playable ad that seamlessly continues from where the video ends.
+                  </p>
+                  <VideoUploader
+                    onFrameExtracted={handleFrameExtracted}
+                    onClear={handleVideoClear}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Template Selector */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
@@ -318,6 +401,7 @@ export default function GeneratePage() {
               <button onClick={handleGenerate} disabled={isLoading || loadingTemplate}
                 className="flex-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors">
                 {loadingTemplate ? "Loading template..." : isLoading ? (
+                  agentPhase === "frame-analyzer" ? "👁️ Analyzing frame..." :
                   agentPhase === "researcher" ? "🔍 Researching..." :
                   agentPhase === "designer" ? "🎨 Designing..." :
                   (agentPhase === "coder" || agentPhase === "streaming") ? "💻 Coding..." :
@@ -337,15 +421,27 @@ export default function GeneratePage() {
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Preview</h2>
               {generatedHtml && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <div className="text-xs text-gray-400">
                     <span className={sizeKB > limitKB ? "text-red-400" : "text-green-400"}>{sizeKB} KB</span>
                     <span className="text-gray-600"> / {limitKB} KB</span>
                   </div>
                   <button onClick={handleDownload}
-                    className="bg-green-600 hover:bg-green-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                    Download HTML
+                    className="bg-green-600 hover:bg-green-500 text-white text-sm font-semibold px-3 py-2 rounded-lg transition-colors">
+                    HTML
                   </button>
+                  {videoMode && videoFile && (
+                    <>
+                      <button onClick={handleDownloadVideo}
+                        className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-3 py-2 rounded-lg transition-colors">
+                        Video
+                      </button>
+                      <button onClick={handleDownloadZip}
+                        className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold px-3 py-2 rounded-lg transition-colors">
+                        ZIP
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -358,9 +454,19 @@ export default function GeneratePage() {
                       <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-6">
                         <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
                         <div className="w-full space-y-2">
-                          {(["researcher","designer","coder"] as const).map((phase, i) => {
-                            const labels = { researcher: "🔍 Researcher", designer: "🎨 Designer", coder: "💻 Coder" };
-                            const order = ["researcher","designer","coder","streaming"];
+                          {(videoMode
+                            ? (["frame-analyzer","researcher","designer","coder"] as const)
+                            : (["researcher","designer","coder"] as const)
+                          ).map((phase, i) => {
+                            const labels: Record<string, string> = {
+                              "frame-analyzer": "👁️ Frame Analyzer",
+                              researcher: "🔍 Researcher",
+                              designer: "🎨 Designer",
+                              coder: "💻 Coder",
+                            };
+                            const order = videoMode
+                              ? ["frame-analyzer","researcher","designer","coder","streaming"]
+                              : ["researcher","designer","coder","streaming"];
                             const done = order.indexOf(agentPhase) > i;
                             const active = order.indexOf(agentPhase) === i || (phase === "coder" && agentPhase === "streaming");
                             return (
@@ -377,12 +483,33 @@ export default function GeneratePage() {
                       </div>
                     )}
                     {!isLoading && generatedHtml && (
-                      <iframe
-                        srcDoc={generatedHtml}
-                        className="w-full h-full border-0"
-                        sandbox="allow-scripts"
-                        title="Ad Preview"
-                      />
+                      <div className="w-full h-full relative">
+                        {videoMode && videoUrl && (
+                          <video
+                            ref={videoRef}
+                            src={videoUrl}
+                            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+                              videoEnded ? "opacity-0 pointer-events-none" : "opacity-100"
+                            }`}
+                            autoPlay
+                            muted
+                            playsInline
+                            onEnded={() => setVideoEnded(true)}
+                            onClick={() => {
+                              if (videoRef.current?.paused) videoRef.current.play();
+                              else videoRef.current?.pause();
+                            }}
+                          />
+                        )}
+                        <iframe
+                          srcDoc={generatedHtml}
+                          className={`w-full h-full border-0 transition-opacity duration-500 ${
+                            videoMode && videoUrl && !videoEnded ? "opacity-0" : "opacity-100"
+                          }`}
+                          sandbox="allow-scripts"
+                          title="Ad Preview"
+                        />
+                      </div>
                     )}
                     {!isLoading && !generatedHtml && (
                       <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-gray-600">

@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     secondaryColor,
     timeLimit,
     baseTemplateHtml,
+    videoFrameBase64,
   } = await req.json();
 
   const apiKey = process.env.GROQ_API_KEY;
@@ -41,6 +42,39 @@ export async function POST(req: NextRequest) {
       const send = (text: string) => controller.enqueue(encoder.encode(text));
 
       try {
+        // ── AGENT 0: FRAME ANALYZER (only when video mode) ───────────────
+        let frameAnalysis = "";
+        if (videoFrameBase64) {
+          send("\x01AGENT:frame-analyzer\x02");
+
+          const frameResult = await generateText({
+            model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
+            maxOutputTokens: 500,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "image",
+                    image: `data:image/png;base64,${videoFrameBase64}`,
+                  },
+                  {
+                    type: "text",
+                    text: `Analyze this screenshot (the last frame of a video ad). Output JSON only:
+{"background":"describe background color/gradient/image","layout":"describe element positions (top/center/bottom)","colors":["#hex1","#hex2","#hex3"],"textElements":[{"text":"...","position":"top-center","size":"large"}],"gameElements":"describe any game UI, grid, buttons visible","style":"overall visual style (minimal/bold/neon/etc)"}`,
+                  },
+                ],
+              },
+            ],
+          });
+
+          frameAnalysis = frameResult.text;
+          try {
+            const m = frameAnalysis.match(/\{[\s\S]*\}/);
+            if (m) frameAnalysis = m[0];
+          } catch { /* use raw text */ }
+        }
+
         // ── AGENTS 1 + 2: RESEARCHER & DESIGNER (parallel) ───────────────
         send("\x01AGENT:researcher\x02");
 
@@ -111,7 +145,18 @@ ${hasTemplate
   : `CONSTRUCTION RULES:
 - Build a clean, centered layout: header with game name + logo emoji, stats bar (score/pairs/timer), 4×4 grid, footer rule
 - Use the design spec colors for background, tiles, selected state, and CTA
-- Make tiles feel tactile: white card tiles with subtle shadow, selected state uses primary color fill`}`;
+- Make tiles feel tactile: white card tiles with subtle shadow, selected state uses primary color fill`}
+
+${frameAnalysis ? `
+VIDEO TRANSITION MATCHING (CRITICAL):
+The user has a lead-in video ad. The playable ad's INITIAL visual state must EXACTLY match the video's last frame for a seamless transition.
+Frame analysis of video's last frame: ${frameAnalysis}
+- Use the SAME background color/gradient as described
+- Position elements in the SAME layout
+- Use the SAME color palette
+- The first thing the user sees must be visually identical to the video's ending
+- After 1 second, elements should animate into interactive gameplay
+` : ""}`;
 
         const coderPrompt = hasTemplate
           ? `RESEARCHER BRIEF: ${JSON.stringify(brief)}
