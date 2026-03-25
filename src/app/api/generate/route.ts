@@ -191,7 +191,7 @@ Now output the complete polished index.html:`;
         if (err instanceof Error) {
           msg = err.message;
           // Surface Groq API error details if available
-          const anyErr = err as Record<string, unknown>;
+          const anyErr = err as unknown as Record<string, unknown>;
           if (anyErr.statusCode) msg = `HTTP ${anyErr.statusCode}: ${msg}`;
           if (anyErr.responseBody) {
             try {

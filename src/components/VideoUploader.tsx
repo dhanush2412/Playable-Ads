@@ -67,7 +67,7 @@ export default function VideoUploader({
           height,
         });
 
-        onFrameExtracted({ base64, width, height, videoFile: file, videoUrl, analysis });
+        onFrameExtracted({ base64, width, height, videoFile: file, videoUrl, analysis: analysis as unknown as Record<string, unknown> });
       } catch (err) {
         setError(
           err instanceof Error
