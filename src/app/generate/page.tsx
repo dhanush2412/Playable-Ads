@@ -35,6 +35,16 @@ export default function GeneratePage() {
   const [secondaryColor, setSecondaryColor] = useState("#f1c40f");
   const [timeLimit, setTimeLimit] = useState(20);
   const [selectedTemplate, setSelectedTemplate] = useState("wizard_sumlink");
+  const [customTemplates, setCustomTemplates] = useState<
+    { id: string; label: string; description: string; html: string }[]
+  >([]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("ezyads_custom_templates") || "[]");
+      setCustomTemplates(saved);
+    } catch { /* ignore */ }
+  }, []);
   const [customHtml, setCustomHtml] = useState("");
   const [generatedHtml, setGeneratedHtml] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +53,7 @@ export default function GeneratePage() {
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [agentPhase, setAgentPhase] = useState<"idle" | "frame-analyzer" | "researcher" | "designer" | "coder" | "streaming">("idle");
   const abortRef = useRef<AbortController | null>(null);
+  const [savedAsTemplate, setSavedAsTemplate] = useState(false);
   const [videoMode, setVideoMode] = useState(false);
   const [videoFrameBase64, setVideoFrameBase64] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -73,6 +84,9 @@ export default function GeneratePage() {
 
   const fetchTemplateHtml = async (templateId: string): Promise<string> => {
     if (templateId === "custom") return "";
+    // Check if it's a saved custom template
+    const custom = customTemplates.find(t => t.id === templateId);
+    if (custom) return custom.html;
     setLoadingTemplate(true);
     // "none" falls back to minimal_clean so the AI has a quality base to restyle
     const fileId = templateId === "none" ? "minimal_clean" : templateId;
@@ -99,6 +113,7 @@ export default function GeneratePage() {
     setCharCount(0);
     setIsLoading(true);
     setAgentPhase("idle");
+    setSavedAsTemplate(false);
 
     abortRef.current = new AbortController();
     let html = "";
@@ -232,6 +247,26 @@ export default function GeneratePage() {
     saveAs(blob, `${gameName.replace(/\s+/g, "-").toLowerCase() || "playable-ad"}-bundle.zip`);
   };
 
+  const handleSaveAsTemplate = () => {
+    if (!generatedHtml || !gameName.trim()) return;
+    try {
+      const templates = JSON.parse(localStorage.getItem("ezyads_custom_templates") || "[]");
+      const id = `custom-${Date.now()}`;
+      templates.push({
+        id,
+        label: `${gameName}${videoMode ? " (Video+Playable)" : ""}`,
+        description: mechanic.slice(0, 80) || "Custom AI-generated template",
+        html: generatedHtml,
+        hasVideo: videoMode && !!videoFile,
+        createdAt: new Date().toISOString(),
+        colors: { primary: primaryColor, secondary: secondaryColor },
+      });
+      localStorage.setItem("ezyads_custom_templates", JSON.stringify(templates));
+      setSavedAsTemplate(true);
+      setTimeout(() => setSavedAsTemplate(false), 3000);
+    } catch { /* localStorage unavailable */ }
+  };
+
   const sizeKB = Math.round(new Blob([generatedHtml]).size / 1024);
   const limitKB = targetNetwork === "meta" || targetNetwork === "ironsource" ? 2048 : 5120;
   const sizePercent = Math.min((sizeKB / limitKB) * 100, 100);
@@ -305,6 +340,27 @@ export default function GeneratePage() {
                   </label>
                 ))}
               </div>
+
+              {customTemplates.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-700">
+                  <p className="text-xs text-gray-500 mb-2">Your saved templates</p>
+                  <div className="space-y-2">
+                    {customTemplates.map(t => (
+                      <label key={t.id}
+                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedTemplate === t.id ? "border-purple-500 bg-purple-500/10" : "border-gray-700 hover:border-gray-600"}`}>
+                        <input type="radio" name="template" value={t.id}
+                          checked={selectedTemplate === t.id}
+                          onChange={() => setSelectedTemplate(t.id)}
+                          className="mt-0.5 accent-purple-500" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium">{t.label}</div>
+                          <div className="text-xs text-gray-500 truncate">{t.description}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {selectedTemplate === "custom" && (
                 <div className="mt-3">
@@ -442,6 +498,15 @@ export default function GeneratePage() {
                       </button>
                     </>
                   )}
+                  <button onClick={handleSaveAsTemplate}
+                    disabled={savedAsTemplate}
+                    className={`text-sm font-semibold px-3 py-2 rounded-lg transition-colors ${
+                      savedAsTemplate
+                        ? "bg-green-700 text-green-300 cursor-default"
+                        : "bg-gray-700 hover:bg-gray-600 text-white"
+                    }`}>
+                    {savedAsTemplate ? "Saved!" : "Save Template"}
+                  </button>
                 </div>
               )}
             </div>
