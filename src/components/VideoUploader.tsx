@@ -10,6 +10,7 @@ interface VideoUploaderProps {
     height: number;
     videoFile: File;
     videoUrl: string;
+    analysis?: Record<string, unknown>;
   }) => void;
   onClear: () => void;
 }
@@ -51,12 +52,12 @@ export default function VideoUploader({
       setExtractProgress("Loading FFmpeg...");
 
       try {
-        const { base64, width, height } = await extractLastFrame(file, (msg) =>
+        const { base64, width, height, analysis } = await extractLastFrame(file, (msg) =>
           setExtractProgress(msg)
         );
 
         const videoUrl = URL.createObjectURL(file);
-        const frameDataUrl = `data:image/png;base64,${base64}`;
+        const frameDataUrl = `data:image/jpeg;base64,${base64}`;
 
         setPreview({
           videoName: file.name,
@@ -66,7 +67,7 @@ export default function VideoUploader({
           height,
         });
 
-        onFrameExtracted({ base64, width, height, videoFile: file, videoUrl });
+        onFrameExtracted({ base64, width, height, videoFile: file, videoUrl, analysis });
       } catch (err) {
         setError(
           err instanceof Error

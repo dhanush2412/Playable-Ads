@@ -56,6 +56,7 @@ export default function GeneratePage() {
   const [savedAsTemplate, setSavedAsTemplate] = useState(false);
   const [videoMode, setVideoMode] = useState(false);
   const [videoFrameBase64, setVideoFrameBase64] = useState("");
+  const [videoFrameAnalysis, setVideoFrameAnalysis] = useState<Record<string, unknown> | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [videoEnded, setVideoEnded] = useState(false);
@@ -67,8 +68,10 @@ export default function GeneratePage() {
     height: number;
     videoFile: File;
     videoUrl: string;
+    analysis?: Record<string, unknown>;
   }) => {
     setVideoFrameBase64(data.base64);
+    setVideoFrameAnalysis(data.analysis || null);
     setVideoFile(data.videoFile);
     setVideoUrl(data.videoUrl);
     setVideoEnded(false);
@@ -76,6 +79,7 @@ export default function GeneratePage() {
 
   const handleVideoClear = useCallback(() => {
     setVideoFrameBase64("");
+    setVideoFrameAnalysis(null);
     setVideoFile(null);
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     setVideoUrl("");
@@ -132,7 +136,7 @@ export default function GeneratePage() {
         body: JSON.stringify({
           gameName, iosStoreUrl, androidStoreUrl, targetNetwork,
           mechanic, primaryColor, secondaryColor, timeLimit, baseTemplateHtml,
-          videoFrameBase64: videoMode ? videoFrameBase64 : undefined,
+          videoFrameAnalysis: videoMode && videoFrameAnalysis ? videoFrameAnalysis : undefined,
         }),
         signal: abortRef.current.signal,
       });

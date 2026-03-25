@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     secondaryColor,
     timeLimit,
     baseTemplateHtml,
-    videoFrameBase64,
+    videoFrameAnalysis,
   } = await req.json();
 
   const apiKey = process.env.GROQ_API_KEY;
@@ -42,56 +42,11 @@ export async function POST(req: NextRequest) {
       const send = (text: string) => controller.enqueue(encoder.encode(text));
 
       try {
-        // ── AGENT 0: FRAME ANALYZER (only when video mode) ───────────────
+        // ── FRAME ANALYSIS (client-side, no vision API needed) ───────────
         let frameAnalysis = "";
-        if (videoFrameBase64) {
+        if (videoFrameAnalysis) {
           send("\x01AGENT:frame-analyzer\x02");
-
-          const frameResult = await generateText({
-            model: groq("meta-llama/llama-3.2-11b-vision-preview"),
-            maxOutputTokens: 1500,
-            messages: [
-              {
-                role: "user",
-                content: [
-                  {
-                    type: "image",
-                    image: Buffer.from(videoFrameBase64, "base64"),
-                  },
-                  {
-                    type: "text",
-                    text: `You are a pixel-perfect UI analyzer. Analyze this screenshot (the last frame of a video ad) with EXTREME precision. The playable ad must look IDENTICAL to this frame.
-
-Output JSON only with these EXACT details:
-{
-  "backgroundColor": "exact hex color of the background (e.g. #00BFFF)",
-  "gridRows": number of rows of tiles/cards,
-  "gridCols": number of columns of tiles/cards,
-  "tileStyle": "exact description: background color, border-radius in px, shadow, border",
-  "tileTextColor": "exact hex of the number/text color on tiles",
-  "tileTextWeight": "bold/normal/900",
-  "tileTextSize": "approximate size like 32px, 48px etc",
-  "gapBetweenTiles": "approximate gap in px",
-  "tilePadding": "approximate padding inside each tile",
-  "numbers": [[row1 numbers], [row2 numbers], ...],
-  "hasHeader": true/false,
-  "hasTimer": true/false,
-  "hasCTA": true/false,
-  "headerText": "text if visible",
-  "overallStyle": "minimal/bold/neon/etc",
-  "fontFamily": "rounded/system/serif/monospace"
-}`,
-                  },
-                ],
-              },
-            ],
-          });
-
-          frameAnalysis = frameResult.text;
-          try {
-            const m = frameAnalysis.match(/\{[\s\S]*\}/);
-            if (m) frameAnalysis = m[0];
-          } catch { /* use raw text */ }
+          frameAnalysis = JSON.stringify(videoFrameAnalysis);
         }
 
         // ── AGENTS 1 + 2: RESEARCHER & DESIGNER (parallel) ───────────────
