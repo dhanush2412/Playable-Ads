@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
                 content: [
                   {
                     type: "image",
-                    image: `data:image/png;base64,${videoFrameBase64}`,
+                    image: Buffer.from(videoFrameBase64, "base64"),
                   },
                   {
                     type: "text",
