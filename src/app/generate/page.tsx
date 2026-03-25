@@ -560,9 +560,14 @@ export default function GeneratePage() {
                             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
                               videoEnded ? "opacity-0 pointer-events-none" : "opacity-100"
                             }`}
+                            autoPlay
+                            muted
                             playsInline
-                            controls
                             onEnded={() => setVideoEnded(true)}
+                            onClick={() => {
+                              if (videoRef.current?.paused) videoRef.current.play();
+                              else videoRef.current?.pause();
+                            }}
                           />
                         )}
                         <iframe
