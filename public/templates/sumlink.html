@@ -108,7 +108,7 @@
 
         function openStore() {
             // Critical MRAID Support
-            if (typeof mraid !== 'undefined') {
+            if (typeof FbPlayableAd !== 'undefined') { FbPlayableAd.onCTAClick(); } else if (typeof mraid !== 'undefined') {
                 if (mraid.getState() === 'loading') {
                     mraid.addEventListener('ready', () => mraid.open(STORE_URL));
                 } else {

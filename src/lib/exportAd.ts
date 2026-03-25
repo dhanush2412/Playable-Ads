@@ -66,7 +66,7 @@ ${template.uiHtml.replace("{{DIALOGUE_TEXT}}", config.matchRule || "Match number
 </div>
 <script>
 var STORE_URL='${storeUrl}';
-function openStore(){if(typeof mraid!=='undefined'){if(mraid.getState()==='loading')mraid.addEventListener('ready',function(){mraid.open(STORE_URL)});else mraid.open(STORE_URL)}else{window.open(STORE_URL,'_blank')}}
+function openStore(){if(typeof FbPlayableAd!=='undefined'){FbPlayableAd.onCTAClick()}else if(typeof mraid!=='undefined'){if(mraid.getState()==='loading')mraid.addEventListener('ready',function(){mraid.open(STORE_URL)});else mraid.open(STORE_URL)}else{window.open(STORE_URL,'_blank')}}
 var COLS=4,ROWS=4,TILE_SIZE=66;
 var INITIAL_GRID=[[5,5,2,8],[1,9,3,7],[4,6,5,5],[8,2,1,9]];
 var board=[],gridEl=document.getElementById('grid'),boardBg=document.getElementById('board-bg'),gemIdCounter=0,selectedGem=null,matchesMade=0,state='tutorial';

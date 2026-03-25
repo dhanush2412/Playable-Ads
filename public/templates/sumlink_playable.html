@@ -411,7 +411,7 @@ function showPill(t,ok){
 function endCard(){$end.classList.add("s");$cta.style.display="block";}
 
 window.handleCTA=function(){
-  if(typeof mraid!=="undefined")mraid.open(STORE_URL);
+  if(typeof FbPlayableAd!=="undefined"){FbPlayableAd.onCTAClick()}else if(typeof mraid!=="undefined")mraid.open(STORE_URL);
   else window.open(STORE_URL,"_blank");
 };
 

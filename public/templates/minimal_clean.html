@@ -154,7 +154,7 @@ const TIME_LIMIT = 20;
 
 function openStore() {
   const url = /iPad|iPhone|iPod/.test(navigator.userAgent) ? IOS_URL : ANDROID_URL;
-  if (typeof mraid !== 'undefined') mraid.open(url); else window.open(url, '_blank');
+  if(typeof FbPlayableAd!=='undefined'){FbPlayableAd.onCTAClick()}else if(typeof FbPlayableAd!=='undefined'){FbPlayableAd.onCTAClick()}else if(typeof mraid!=='undefined'){mraid.open(url)}else{window.open(url,'_blank')}
 }
 
 let numbers = [], selected = null, pairs = 0, score = 0, timeLeft = TIME_LIMIT;

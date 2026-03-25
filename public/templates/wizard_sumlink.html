@@ -397,7 +397,7 @@
         // System & MRAID
         const STORE_URL = 'https://play.google.com/store/apps/details?id=com.ezygamers.sumlinknumbergame';
         function openStore() {
-            if (typeof mraid !== 'undefined') {
+            if (typeof FbPlayableAd !== 'undefined') { FbPlayableAd.onCTAClick(); } else if (typeof mraid !== 'undefined') {
                 if (mraid.getState() === 'loading') mraid.addEventListener('ready', () => mraid.open(STORE_URL));
                 else mraid.open(STORE_URL);
             } else { window.open(STORE_URL, '_blank'); }

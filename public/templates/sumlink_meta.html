@@ -163,7 +163,7 @@
             } else if (userAgent.includes('android')) {
                 storeUrl = 'https://play.google.com/store/apps/details?id=org.thjh.sumlink&hl=en_IN';
             }
-            if (typeof mraid !== 'undefined') {
+            if (typeof FbPlayableAd !== 'undefined') { FbPlayableAd.onCTAClick(); } else if (typeof mraid !== 'undefined') {
                 mraid.open(storeUrl);
             } else {
                 window.open(storeUrl, '_blank');

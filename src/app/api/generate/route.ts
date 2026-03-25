@@ -142,7 +142,8 @@ Output ONLY: {"bgStyle":"...","tileStyle":"...","selectedStyle":"...","buttonSty
 ABSOLUTE RULES — NEVER BREAK THESE:
 - Output ONLY raw HTML starting with <!DOCTYPE html>. Zero markdown. Zero code fences. Zero explanation.
 - All CSS and JS must be inlined inside the single HTML file. No external resources.
-- MRAID CTA must be: if(typeof mraid!=='undefined') mraid.open(url); else window.open(url,'_blank');
+- CTA function MUST be: function openStore(){if(typeof FbPlayableAd!=='undefined'){FbPlayableAd.onCTAClick()}else if(typeof mraid!=='undefined'){mraid.open(STORE_URL)}else{window.open(STORE_URL,'_blank')}}
+- This is REQUIRED for Facebook Ads compatibility. FbPlayableAd.onCTAClick() MUST come first.
 - Network limit: ${networkLimit}
 
 QUALITY STANDARDS — every ad you output must have ALL of these. Write COMPREHENSIVE, COMPLETE code — do not shorten or truncate:
