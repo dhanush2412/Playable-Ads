@@ -1,74 +1,65 @@
-import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { fetchFile, toBlobURL } from "@ffmpeg/util";
-
-let ffmpeg: FFmpeg | null = null;
-
-export async function loadFFmpeg(
-  onProgress?: (msg: string) => void
-): Promise<FFmpeg> {
-  if (ffmpeg && ffmpeg.loaded) return ffmpeg;
-
-  ffmpeg = new FFmpeg();
-
-  ffmpeg.on("log", ({ message }) => {
-    onProgress?.(message);
-  });
-
-  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
-  await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-  });
-
-  return ffmpeg;
-}
+/**
+ * Extract the last frame of a video using native browser APIs.
+ * Uses <video> + <canvas> — no FFmpeg WASM, no special headers needed.
+ */
 
 export async function extractLastFrame(
   videoFile: File,
   onProgress?: (msg: string) => void
 ): Promise<{ base64: string; width: number; height: number }> {
-  const ff = await loadFFmpeg(onProgress);
+  onProgress?.("Loading video...");
 
-  const videoData = await fetchFile(videoFile);
-  await ff.writeFile("input.mp4", videoData);
+  const videoUrl = URL.createObjectURL(videoFile);
 
-  // Use -sseof to seek from end, extract 1 frame
-  await ff.exec([
-    "-sseof",
-    "-0.1",
-    "-i",
-    "input.mp4",
-    "-frames:v",
-    "1",
-    "-q:v",
-    "2",
-    "lastframe.png",
-  ]);
+  try {
+    const { base64, width, height } = await new Promise<{
+      base64: string;
+      width: number;
+      height: number;
+    }>((resolve, reject) => {
+      const video = document.createElement("video");
+      video.preload = "auto";
+      video.muted = true;
+      video.playsInline = true;
 
-  const frameData = await ff.readFile("lastframe.png");
-  const blob = new Blob([new Uint8Array(frameData as Uint8Array)], { type: "image/png" });
+      video.onloadedmetadata = () => {
+        onProgress?.("Seeking to last frame...");
+        // Seek to 0.1s before end to get the last visible frame
+        video.currentTime = Math.max(0, video.duration - 0.1);
+      };
 
-  const imageBitmap = await createImageBitmap(blob);
-  const width = imageBitmap.width;
-  const height = imageBitmap.height;
-  imageBitmap.close();
+      video.onseeked = () => {
+        onProgress?.("Extracting frame...");
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas 2D context not available"));
+          return;
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  const base64 = await blobToBase64(blob);
+        // Get Base64 PNG (strip the data:image/png;base64, prefix)
+        const dataUrl = canvas.toDataURL("image/png");
+        const base64 = dataUrl.split(",")[1];
 
-  await ff.deleteFile("input.mp4");
-  await ff.deleteFile("lastframe.png");
+        resolve({
+          base64,
+          width: video.videoWidth,
+          height: video.videoHeight,
+        });
+      };
 
-  return { base64, width, height };
-}
+      video.onerror = () => {
+        reject(new Error("Failed to load video. Ensure it is a valid MP4 file."));
+      };
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      resolve(result.split(",")[1]);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+      video.src = videoUrl;
+    });
+
+    return { base64, width, height };
+  } finally {
+    URL.revokeObjectURL(videoUrl);
+  }
 }
