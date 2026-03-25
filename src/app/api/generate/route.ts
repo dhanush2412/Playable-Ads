@@ -55,14 +55,14 @@ export async function POST(req: NextRequest) {
         const [researchResult, designResult] = await Promise.all([
           generateText({
             model: groq("llama-3.1-8b-instant"), // Fast 8B: just needs short JSON
-            maxOutputTokens: 1000,
+            maxOutputTokens: 300,
             system: `Mobile ad strategist. Output JSON only. No explanation.`,
             prompt: `Game: ${gameName}, Mechanic: ${mechanic}, Network: ${targetNetwork}, Colors: ${primaryColor}/${secondaryColor}, Time: ${timeLimit}s
 Output ONLY: {"hook":"...","tutorialStep":"...","winCondition":"...","emotionalTrigger":"...","ctaText":"..."}`,
           }),
           generateText({
             model: groq("llama-3.1-8b-instant"), // Fast 8B: just needs short JSON
-            maxOutputTokens: 1000,
+            maxOutputTokens: 300,
             system: `CSS designer for mobile ads. Output JSON only. No explanation.`,
             prompt: `Game: ${gameName}, Primary: ${primaryColor}, Secondary: ${secondaryColor}
 Output ONLY: {"bgStyle":"...","tileStyle":"...","selectedStyle":"...","buttonStyle":"...","accentGlow":"..."}`,
@@ -175,7 +175,7 @@ Now output the complete polished index.html:`;
 
         const coderStream = streamText({
           model: groq("meta-llama/llama-4-scout-17b-16e-instruct"), // 30k TPM on Groq free tier
-          maxOutputTokens: 16000,
+          maxOutputTokens: 8000,
           system: coderSystem,
           prompt: coderPrompt,
         });
