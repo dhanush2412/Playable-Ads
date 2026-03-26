@@ -59,7 +59,7 @@ export default function AdBuilder({ template }: Props) {
         .then((html) => {
           // For video+playable, remove newspaper intro from preview too
           if (hasVideoUpload) {
-            const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var el=document.getElementById('intro');if(el)el.parentNode.removeChild(el);});<\/script>`;
+            const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');if(typeof init==='function')init();if(typeof setupTouch==='function')setupTouch();});<\/script>`;
             html = html.replace("</body>", skipIntro + "</body>");
           }
           setPreviewHtml(html);
@@ -120,8 +120,8 @@ export default function AdBuilder({ template }: Props) {
 </body>
 </html>`;
 
-      // Inject a script that immediately removes the newspaper intro on load
-      const skipIntroScript = `<script>document.addEventListener('DOMContentLoaded',function(){var el=document.getElementById('intro');if(el)el.parentNode.removeChild(el);});<\/script>`;
+      // Skip intro animation — immediately show game and call init()
+      const skipIntroScript = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');if(typeof init==='function')init();if(typeof setupTouch==='function')setupTouch();});<\/script>`;
       const gameHtml = previewHtml.replace("</body>", skipIntroScript + "</body>");
 
       const zip = new JSZip();
