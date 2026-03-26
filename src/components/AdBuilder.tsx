@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Template } from "@/data/templates";
 import { AdConfig, generateAdHtml, getFileSizeKB, NETWORK_LIMITS } from "@/lib/exportAd";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
@@ -28,6 +30,7 @@ interface Props {
 
 export default function AdBuilder({ template }: Props) {
   const isStandalone = !!template.templateFile;
+  const hasVideoUpload = !!template.hasVideoUpload;
 
   const [config, setConfig] = useState<AdConfig>({
     ...DEFAULT_CONFIG,
@@ -40,6 +43,13 @@ export default function AdBuilder({ template }: Props) {
   const [showEditor, setShowEditor] = useState(false);
   const [fileSizeKB, setFileSizeKB] = useState(0);
   const [exported, setExported] = useState(false);
+
+  // Video upload state
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoObjectUrl, setVideoObjectUrl] = useState("");
+  const [videoEnded, setVideoEnded] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Load standalone template file from public/templates/
   useEffect(() => {
@@ -68,17 +78,78 @@ export default function AdBuilder({ template }: Props) {
     setConfig((prev) => ({ ...prev, [field]: value }));
   }
 
-  function handleExport() {
-    const html = isStandalone ? previewHtml : generateAdHtml(template, config);
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${config.gameName || "playable-ad"}-${config.targetNetwork}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
+  async function handleExport() {
+    if (hasVideoUpload && videoFile) {
+      // Build ZIP: index.html (wrapper) + sumlink_playable.html + video.mp4
+      const wrapperHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <title>${config.gameName || "Playable Ad"}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:100%;height:100%;overflow:hidden;background:#000}
+    #vl{position:absolute;inset:0;z-index:10;transition:opacity .5s ease}
+    #vl video{width:100%;height:100%;object-fit:cover}
+    #gl{position:absolute;inset:0;z-index:5}
+    #gl iframe{width:100%;height:100%;border:0}
+  </style>
+</head>
+<body>
+  <div id="vl">
+    <video autoplay playsinline onended="go()">
+      <source src="./video.mp4" type="video/mp4">
+    </video>
+  </div>
+  <div id="gl">
+    <iframe src="./sumlink_playable.html" sandbox="allow-scripts allow-same-origin"></iframe>
+  </div>
+  <script>
+    function go(){
+      var v=document.getElementById('vl');
+      v.style.opacity='0';
+      setTimeout(function(){v.style.display='none'},500);
+    }
+  </script>
+</body>
+</html>`;
+
+      const zip = new JSZip();
+      zip.file("index.html", wrapperHtml);
+      zip.file("sumlink_playable.html", previewHtml);
+      zip.file("video.mp4", videoFile);
+      const blob = await zip.generateAsync({ type: "blob" });
+      saveAs(blob, `${config.gameName || "playable-ad"}-video-playable.zip`);
+    } else {
+      const html = isStandalone ? previewHtml : generateAdHtml(template, config);
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${config.gameName || "playable-ad"}-${config.targetNetwork}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
     setExported(true);
     setTimeout(() => setExported(false), 3000);
+  }
+
+  function handleVideoUpload(file: File) {
+    if (!file.type.startsWith("video/")) return;
+    if (videoObjectUrl) URL.revokeObjectURL(videoObjectUrl);
+    const url = URL.createObjectURL(file);
+    setVideoFile(file);
+    setVideoObjectUrl(url);
+    setVideoEnded(false);
+  }
+
+  function handleVideoClear() {
+    if (videoObjectUrl) URL.revokeObjectURL(videoObjectUrl);
+    setVideoFile(null);
+    setVideoObjectUrl("");
+    setVideoEnded(false);
+    if (videoInputRef.current) videoInputRef.current.value = "";
   }
 
   const limit = NETWORK_LIMITS[config.targetNetwork];
@@ -128,7 +199,7 @@ export default function AdBuilder({ template }: Props) {
                 : "bg-purple-600 hover:bg-purple-500 text-white"
             }`}
           >
-            {exported ? "✓ Downloaded!" : isOverLimit ? "⚠ Export (over limit)" : "Export index.html"}
+            {exported ? "✓ Downloaded!" : isOverLimit ? "⚠ Export (over limit)" : hasVideoUpload && videoFile ? "Export ZIP" : "Export index.html"}
           </button>
         </div>
       </div>
@@ -144,7 +215,46 @@ export default function AdBuilder({ template }: Props) {
                   <p className="text-sm text-gray-300 leading-relaxed">{template.description}</p>
                 </Section>
 
-
+                {hasVideoUpload && (
+                  <Section title="Lead-in Video">
+                    {videoFile ? (
+                      <div className="bg-gray-900 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-white font-medium truncate max-w-[160px]">{videoFile.name}</p>
+                            <p className="text-xs text-gray-400">{(videoFile.size / 1024 / 1024).toFixed(1)} MB</p>
+                          </div>
+                          <button
+                            onClick={handleVideoClear}
+                            className="text-gray-500 hover:text-red-400 transition-colors text-lg leading-none"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                        <p className="text-xs text-green-400">Video ready — export as ZIP</p>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => videoInputRef.current?.click()}
+                        className="border-2 border-dashed border-gray-700 hover:border-purple-500 rounded-xl p-5 text-center cursor-pointer transition-colors"
+                      >
+                        <p className="text-2xl mb-1">🎬</p>
+                        <p className="text-sm text-gray-300">Drop or click to upload video</p>
+                        <p className="text-xs text-gray-500 mt-1">MP4 · Any size</p>
+                      </div>
+                    )}
+                    <input
+                      ref={videoInputRef}
+                      type="file"
+                      accept="video/mp4,video/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleVideoUpload(f);
+                      }}
+                    />
+                  </Section>
+                )}
 
                 <Section title="Ad Specs">
                   <div className="grid grid-cols-2 gap-2 text-xs">
@@ -282,6 +392,24 @@ export default function AdBuilder({ template }: Props) {
           <div className="relative" style={{ width: 340, height: 720 }}>
             {/* Phone frame */}
             <div className="absolute inset-0 rounded-[40px] border-4 border-gray-700 bg-black overflow-hidden shadow-2xl">
+              {/* Video overlay (only for video+playable template) */}
+              {hasVideoUpload && videoObjectUrl && (
+                <video
+                  ref={videoRef}
+                  src={videoObjectUrl}
+                  className={`absolute inset-0 w-full h-full object-cover z-10 transition-opacity duration-500 ${
+                    videoEnded ? "opacity-0 pointer-events-none" : "opacity-100"
+                  }`}
+                  autoPlay
+                  muted
+                  playsInline
+                  onEnded={() => setVideoEnded(true)}
+                  onClick={() => {
+                    if (videoRef.current?.paused) videoRef.current.play();
+                    else videoRef.current?.pause();
+                  }}
+                />
+              )}
               {previewHtml ? (
                 <iframe
                   srcDoc={previewHtml}
@@ -292,6 +420,16 @@ export default function AdBuilder({ template }: Props) {
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-600 text-sm">
                   Loading preview...
+                </div>
+              )}
+              {/* Prompt to upload video */}
+              {hasVideoUpload && !videoObjectUrl && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
+                  <div className="text-center">
+                    <p className="text-3xl mb-2">🎬</p>
+                    <p className="text-white text-sm font-medium">Upload a video</p>
+                    <p className="text-gray-400 text-xs mt-1">to preview the transition</p>
+                  </div>
                 </div>
               )}
             </div>

@@ -11,6 +11,7 @@ export interface Template {
   logicSlotJs: string;
   comingSoon?: boolean;
   templateFile?: string;
+  hasVideoUpload?: boolean;
 }
 
 export const templates: Template[] = [
@@ -30,6 +31,24 @@ export const templates: Template[] = [
 }`,
     comingSoon: false,
     templateFile: "sumlink_playable",
+  },
+  {
+    id: "sumlink-video-playable",
+    name: "Sum Link — Video + Playable",
+    theme: "Custom Video → Game Transition",
+    hookStyle: "Upload any video as lead-in",
+    primaryColor: "#ffffff",
+    secondaryColor: "#2860d0",
+    description:
+      "Upload any lead-in video (MP4). When the video ends it seamlessly crossfades into the SumLink playable game. Export as a ZIP bundle containing index.html + video + game.",
+    uiHtml: "<!-- sumlink_playable -->",
+    hookJs: "",
+    logicSlotJs: `function isMatch(val1, val2) {
+  return val1 === val2 || val1 + val2 === 10;
+}`,
+    comingSoon: false,
+    templateFile: "sumlink_playable",
+    hasVideoUpload: true,
   },
   {
     id: "sumlink-autodemo-v1",
