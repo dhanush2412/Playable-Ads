@@ -115,9 +115,13 @@ export default function AdBuilder({ template }: Props) {
 </body>
 </html>`;
 
+      // Inject a script that immediately removes the newspaper intro on load
+      const skipIntroScript = `<script>document.addEventListener('DOMContentLoaded',function(){var el=document.getElementById('intro');if(el)el.parentNode.removeChild(el);});<\/script>`;
+      const gameHtml = previewHtml.replace("</body>", skipIntroScript + "</body>");
+
       const zip = new JSZip();
       zip.file("index.html", wrapperHtml);
-      zip.file("sumlink_playable.html", previewHtml);
+      zip.file("sumlink_playable.html", gameHtml);
       zip.file("video.mp4", videoFile);
       const blob = await zip.generateAsync({ type: "blob" });
       saveAs(blob, `${config.gameName || "playable-ad"}-video-playable.zip`);
