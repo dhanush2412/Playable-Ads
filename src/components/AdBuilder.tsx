@@ -116,6 +116,12 @@ export default function AdBuilder({ template }: Props) {
       v.style.opacity='0';
       setTimeout(function(){v.style.display='none'},500);
     }
+    // Facebook Ads compliance — FbPlayableAd.onCTAClick() must be present in root file
+    function openStore(){
+      if(typeof FbPlayableAd!=='undefined'){FbPlayableAd.onCTAClick();}
+      else if(typeof mraid!=='undefined'){mraid.open('${config.androidStoreUrl || "https://play.google.com/store/apps/details?id=com.ezgamers.sumlink"}');}
+      else{window.open('${config.androidStoreUrl || "https://play.google.com/store/apps/details?id=com.ezgamers.sumlink"}','_blank');}
+    }
   </script>
 </body>
 </html>`;
