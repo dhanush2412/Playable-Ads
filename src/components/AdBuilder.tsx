@@ -57,6 +57,11 @@ export default function AdBuilder({ template }: Props) {
       fetch(`/templates/${template.templateFile}.html`)
         .then((r) => r.text())
         .then((html) => {
+          // For video+playable, remove newspaper intro from preview too
+          if (hasVideoUpload) {
+            const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var el=document.getElementById('intro');if(el)el.parentNode.removeChild(el);});<\/script>`;
+            html = html.replace("</body>", skipIntro + "</body>");
+          }
           setPreviewHtml(html);
           setFileSizeKB(getFileSizeKB(html));
         });
