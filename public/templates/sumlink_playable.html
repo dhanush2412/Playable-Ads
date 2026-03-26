@@ -418,6 +418,9 @@ window.handleCTA=function(){
 // ── MRAID (intro shows first, no auto-init) ──
 // Game init happens when user taps "read full story"
 
+// Expose init for Video+Playable mode (skip intro)
+window._startGame=function(){init();setupTouch();};
+
 })();
 </script>
 </body>
