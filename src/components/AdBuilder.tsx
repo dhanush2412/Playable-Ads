@@ -103,21 +103,34 @@ export default function AdBuilder({ template }: Props) {
 
   async function handleExport() {
     if (hasVideoUpload && videoFile) {
-      // Build ZIP: index.html (wrapper) + sumlink_playable.html + video.mp4
-      const wrapperHtml = `<!DOCTYPE html>
+      // Inline game HTML into index.html — no iframe, no separate HTML file
+      // Facebook flags iframe src as "dynamic asset loading" even for local files
+
+      // Extract <head> and <body> content from game HTML
+      const headContent = rawHtml.substring(
+        rawHtml.indexOf('>', rawHtml.indexOf('<head')) + 1,
+        rawHtml.indexOf('</head>')
+      );
+      const bodyContent = rawHtml.substring(
+        rawHtml.indexOf('>', rawHtml.indexOf('<body')) + 1,
+        rawHtml.lastIndexOf('</body>')
+      );
+
+      const autoCall = playMode === "autoplay"
+        ? "if(typeof window._autoPlay==='function')window._autoPlay();"
+        : "";
+
+      const inlinedHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
   <title>${config.gameName || "Playable Ad"}</title>
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    html,body{width:100%;height:100%;overflow:hidden;background:#000}
-    #vl{position:absolute;inset:0;z-index:10;transition:opacity .5s ease}
+    #vl{position:fixed;inset:0;z-index:9999;transition:opacity .5s ease}
     #vl video{width:100%;height:100%;object-fit:cover}
-    #gl{position:absolute;inset:0;z-index:5}
-    #gl iframe{width:100%;height:100%;border:0}
   </style>
+  ${headContent}
 </head>
 <body>
   <div id="vl">
@@ -125,38 +138,35 @@ export default function AdBuilder({ template }: Props) {
       <source src="./video.mp4" type="video/mp4">
     </video>
   </div>
-  <div id="gl">
-    <iframe src="./sumlink_playable.html" sandbox="allow-scripts allow-same-origin"></iframe>
-  </div>
+  ${bodyContent}
   <script>
+    // Hide newspaper intro immediately, start game
+    document.addEventListener('DOMContentLoaded',function(){
+      var intro=document.getElementById('intro');
+      if(intro)intro.classList.add('done');
+      var gc=document.getElementById('gc');
+      if(gc)gc.classList.add('show');
+      setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);
+    });
+    // Called when video ends
     function go(){
       var v=document.getElementById('vl');
       v.style.opacity='0';
       setTimeout(function(){v.style.display='none'},500);
-      // Notify game iframe that video has ended
-      var iframe=document.querySelector('#gl iframe');
-      if(iframe&&iframe.contentWindow)iframe.contentWindow.postMessage('ezyads:videoEnded','*');
+      ${autoCall}
     }
-    // Facebook Ads compliance — FbPlayableAd.onCTAClick() must be present in root file
+    // Facebook Ads compliance
     function openStore(){
       if(typeof FbPlayableAd!=='undefined'){FbPlayableAd.onCTAClick();}
       else if(typeof mraid!=='undefined'){mraid.open('${config.androidStoreUrl || "https://play.google.com/store/apps/details?id=com.ezgamers.sumlink"}');}
       else{window.open('${config.androidStoreUrl || "https://play.google.com/store/apps/details?id=com.ezgamers.sumlink"}','_blank');}
     }
-  </script>
+  <\/script>
 </body>
 </html>`;
 
-      // Skip intro animation — immediately show game and call init()
-      const autoListener = playMode === "autoplay"
-        ? "window.addEventListener('message',function(e){if(e.data==='ezyads:videoEnded'&&typeof window._autoPlay==='function')window._autoPlay();});"
-        : "";
-      const skipIntroScript = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);});${autoListener}<\/script>`;
-      const gameHtml = rawHtml.replace("</body>", skipIntroScript + "</body>");
-
       const zip = new JSZip();
-      zip.file("index.html", wrapperHtml);
-      zip.file("sumlink_playable.html", gameHtml);
+      zip.file("index.html", inlinedHtml);
       zip.file("video.mp4", videoFile);
       const blob = await zip.generateAsync({ type: "blob" });
       saveAs(blob, `${config.gameName || "playable-ad"}-video-playable.zip`);
