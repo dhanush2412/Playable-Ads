@@ -176,7 +176,7 @@ export default function AdBuilder({ template }: Props) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${config.gameName || "playable-ad"}-${config.targetNetwork}.html`;
+      a.download = "index.html";
       a.click();
       URL.revokeObjectURL(url);
     }
