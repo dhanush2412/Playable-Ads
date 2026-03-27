@@ -48,8 +48,11 @@ export default function AdBuilder({ template }: Props) {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoObjectUrl, setVideoObjectUrl] = useState("");
   const [videoEnded, setVideoEnded] = useState(false);
+  const [playMode, setPlayMode] = useState<"interactive" | "autoplay">("interactive");
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+
+  const [rawHtml, setRawHtml] = useState("");
 
   // Load standalone template file from public/templates/
   useEffect(() => {
@@ -57,16 +60,25 @@ export default function AdBuilder({ template }: Props) {
       fetch(`/templates/${template.templateFile}.html`)
         .then((r) => r.text())
         .then((html) => {
-          // For video+playable, remove newspaper intro from preview too
-          if (hasVideoUpload) {
-            const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);});<\/script>`;
-            html = html.replace("</body>", skipIntro + "</body>");
-          }
-          setPreviewHtml(html);
+          setRawHtml(html);
           setFileSizeKB(getFileSizeKB(html));
         });
     }
   }, [isStandalone, template.templateFile]);
+
+  // Re-inject skip-intro + play mode script whenever rawHtml or playMode changes
+  useEffect(() => {
+    if (!isStandalone || !rawHtml) return;
+    if (hasVideoUpload) {
+      const autoCall = playMode === "autoplay"
+        ? "if(typeof window._autoPlay==='function')window._autoPlay();"
+        : "";
+      const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();${autoCall}},50);});<\/script>`;
+      setPreviewHtml(rawHtml.replace("</body>", skipIntro + "</body>"));
+    } else {
+      setPreviewHtml(rawHtml);
+    }
+  }, [rawHtml, playMode, hasVideoUpload, isStandalone]);
 
   const updatePreview = useCallback(() => {
     if (isStandalone) return; // standalone templates load from file
@@ -127,8 +139,11 @@ export default function AdBuilder({ template }: Props) {
 </html>`;
 
       // Skip intro animation — immediately show game and call init()
-      const skipIntroScript = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);});<\/script>`;
-      const gameHtml = previewHtml.replace("</body>", skipIntroScript + "</body>");
+      const autoCall = playMode === "autoplay"
+        ? "if(typeof window._autoPlay==='function')window._autoPlay();"
+        : "";
+      const skipIntroScript = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();${autoCall}},50);});<\/script>`;
+      const gameHtml = rawHtml.replace("</body>", skipIntroScript + "</body>");
 
       const zip = new JSZip();
       zip.file("index.html", wrapperHtml);
@@ -229,6 +244,38 @@ export default function AdBuilder({ template }: Props) {
                 <Section title="About This Ad">
                   <p className="text-sm text-gray-300 leading-relaxed">{template.description}</p>
                 </Section>
+
+                {hasVideoUpload && (
+                  <Section title="Play Mode">
+                    <div className="flex rounded-lg overflow-hidden border border-gray-700">
+                      <button
+                        onClick={() => setPlayMode("interactive")}
+                        className={`flex-1 py-2 text-xs font-semibold transition-colors ${
+                          playMode === "interactive"
+                            ? "bg-purple-600 text-white"
+                            : "bg-gray-800 text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        Interactive
+                      </button>
+                      <button
+                        onClick={() => setPlayMode("autoplay")}
+                        className={`flex-1 py-2 text-xs font-semibold transition-colors ${
+                          playMode === "autoplay"
+                            ? "bg-purple-600 text-white"
+                            : "bg-gray-800 text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        Auto Play
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {playMode === "autoplay"
+                        ? "Game plays itself — ideal for screen recording"
+                        : "User taps to play — standard playable ad"}
+                    </p>
+                  </Section>
+                )}
 
                 {hasVideoUpload && (
                   <Section title="Lead-in Video">

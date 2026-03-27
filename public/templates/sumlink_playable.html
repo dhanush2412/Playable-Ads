@@ -421,6 +421,22 @@ window.handleCTA=function(){
 // Expose init for Video+Playable mode (skip intro)
 window._startGame=function(){init();setupTouch();};
 
+// Auto-play mode: game plays itself after _startGame()
+window._autoPlay=function(){
+  function nextMove(){
+    if(over)return;
+    var pair=findPair();
+    if(!pair)return;
+    var cells=document.getElementById('gr').children;
+    if(cells[pair[0]])cells[pair[0]].click();
+    setTimeout(function(){
+      if(cells[pair[1]])cells[pair[1]].click();
+      setTimeout(nextMove,1400);
+    },700);
+  }
+  setTimeout(nextMove,1200);
+};
+
 })();
 </script>
 </body>
