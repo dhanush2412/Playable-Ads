@@ -51,6 +51,7 @@ export default function AdBuilder({ template }: Props) {
   const [playMode, setPlayMode] = useState<"interactive" | "autoplay">("interactive");
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const [rawHtml, setRawHtml] = useState("");
 
@@ -70,15 +71,20 @@ export default function AdBuilder({ template }: Props) {
   useEffect(() => {
     if (!isStandalone || !rawHtml) return;
     if (hasVideoUpload) {
-      const autoCall = playMode === "autoplay"
-        ? "if(typeof window._autoPlay==='function')window._autoPlay();"
-        : "";
-      const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();${autoCall}},50);});<\/script>`;
+      // Auto play waits for postMessage from parent (sent when video ends)
+      const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);});window.addEventListener('message',function(e){if(e.data==='ezyads:videoEnded'&&typeof window._autoPlay==='function')window._autoPlay();});<\/script>`;
       setPreviewHtml(rawHtml.replace("</body>", skipIntro + "</body>"));
     } else {
       setPreviewHtml(rawHtml);
     }
-  }, [rawHtml, playMode, hasVideoUpload, isStandalone]);
+  }, [rawHtml, hasVideoUpload, isStandalone]);
+
+  // When video ends in preview, notify iframe to start auto play
+  useEffect(() => {
+    if (videoEnded && playMode === "autoplay" && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage("ezyads:videoEnded", "*");
+    }
+  }, [videoEnded, playMode]);
 
   const updatePreview = useCallback(() => {
     if (isStandalone) return; // standalone templates load from file
@@ -127,6 +133,9 @@ export default function AdBuilder({ template }: Props) {
       var v=document.getElementById('vl');
       v.style.opacity='0';
       setTimeout(function(){v.style.display='none'},500);
+      // Notify game iframe that video has ended
+      var iframe=document.querySelector('#gl iframe');
+      if(iframe&&iframe.contentWindow)iframe.contentWindow.postMessage('ezyads:videoEnded','*');
     }
     // Facebook Ads compliance — FbPlayableAd.onCTAClick() must be present in root file
     function openStore(){
@@ -139,10 +148,10 @@ export default function AdBuilder({ template }: Props) {
 </html>`;
 
       // Skip intro animation — immediately show game and call init()
-      const autoCall = playMode === "autoplay"
-        ? "if(typeof window._autoPlay==='function')window._autoPlay();"
+      const autoListener = playMode === "autoplay"
+        ? "window.addEventListener('message',function(e){if(e.data==='ezyads:videoEnded'&&typeof window._autoPlay==='function')window._autoPlay();});"
         : "";
-      const skipIntroScript = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();${autoCall}},50);});<\/script>`;
+      const skipIntroScript = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);});${autoListener}<\/script>`;
       const gameHtml = rawHtml.replace("</body>", skipIntroScript + "</body>");
 
       const zip = new JSZip();
@@ -474,9 +483,10 @@ export default function AdBuilder({ template }: Props) {
               )}
               {previewHtml ? (
                 <iframe
+                  ref={iframeRef}
                   srcDoc={previewHtml}
                   className="w-full h-full border-0"
-                  sandbox="allow-scripts"
+                  sandbox="allow-scripts allow-same-origin"
                   title="Ad Preview"
                 />
               ) : (
