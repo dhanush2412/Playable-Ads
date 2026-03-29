@@ -371,18 +371,54 @@ function addEmoji(el){
   el.appendChild(em);
 }
 
+// ── SOUND ENGINE ──
+var AC=null;
+function getAC(){
+  if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+  if(AC&&AC.state==='suspended')AC.resume();
+  return AC;
+}
+function _t(f,type,s,d,v,ef){
+  var ac=getAC();if(!ac)return;
+  var o=ac.createOscillator(),g=ac.createGain();
+  o.connect(g);g.connect(ac.destination);
+  o.type=type;o.frequency.setValueAtTime(f,ac.currentTime+s);
+  if(ef)o.frequency.exponentialRampToValueAtTime(ef,ac.currentTime+s+d);
+  g.gain.setValueAtTime(v,ac.currentTime+s);
+  g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+s+d);
+  o.start(ac.currentTime+s);o.stop(ac.currentTime+s+d+0.05);
+}
+function soundSelect(){_t(660,'sine',0,0.07,0.15);}
+function soundMatch(isPair){
+  var b=isPair?523:587;
+  _t(b,'sine',0,0.18,0.32);
+  _t(b*1.5,'sine',0.1,0.25,0.38);
+  _t(b*2,'sine',0.2,0.3,0.2);
+}
+function soundWrong(){
+  _t(220,'sawtooth',0,0.08,0.22,180);
+  _t(170,'sawtooth',0.07,0.12,0.18,130);
+}
+function soundWin(){
+  _t(523,'sine',0,0.2,0.32);
+  _t(659,'sine',0.14,0.2,0.32);
+  _t(784,'sine',0.28,0.22,0.32);
+  _t(1047,'sine',0.42,0.4,0.38);
+  _t(1319,'sine',0.58,0.5,0.28);
+}
+
 // ── USER INTERACTION ──
 function onClick(e){
   if(over)return;
   var cell=e.currentTarget,idx=parseInt(cell.dataset.i);
   if(cell.classList.contains("clr"))return;
   checkHint(idx);
-  if(sel===null){sel={i:idx,el:cell,v:g[idx]};cell.classList.add("sel");return;}
+  if(sel===null){sel={i:idx,el:cell,v:g[idx]};cell.classList.add("sel");soundSelect();return;}
   if(sel.i===idx){cell.classList.remove("sel");sel=null;return;}
   var v1=sel.v,v2=g[idx],pair=(v1===v2),s10=(v1+v2===10),ok=pair||s10;
   if(ok){
     cell.classList.add("sel");var a=sel.el,b=cell;sel=null;
-    showPill(pair?"A pair!":"Sum of 10!",true);
+    soundMatch(pair);showPill(pair?"A pair!":"Sum of 10!",true);
     mc++;$pf.style.width=Math.min(100,(mc/TOTAL_MATCHES)*100)+"%";
     setTimeout(function(){sparkle(a);sparkle(b);},200);
     setTimeout(function(){
@@ -397,7 +433,7 @@ function onClick(e){
     if(mc>=TOTAL_MATCHES){over=true;setTimeout(endCard,1400);}
   } else {
     cell.classList.add("sel");var pr=sel.el;sel=null;
-    showPill("No, it's not a pair!",false);
+    soundWrong();showPill("No, it's not a pair!",false);
     setTimeout(function(){pr.classList.remove("sel");cell.classList.remove("sel");},450);
   }
 }
@@ -408,7 +444,7 @@ function showPill(t,ok){
   showPill._t=setTimeout(function(){$p.classList.remove("s");},1600);
 }
 
-function endCard(){$end.classList.add("s");$cta.style.display="block";}
+function endCard(){soundWin();$end.classList.add("s");$cta.style.display="block";}
 
 window.handleCTA=function(){
   if(typeof FbPlayableAd!=="undefined"){FbPlayableAd.onCTAClick()}else if(typeof mraid!=="undefined")mraid.open(STORE_URL);
@@ -419,7 +455,7 @@ window.handleCTA=function(){
 // Game init happens when user taps "read full story"
 
 // Expose init for Video+Playable mode (skip intro)
-window._startGame=function(){init();setupTouch();};
+window._startGame=function(){getAC();init();setupTouch();};
 
 // Auto-play mode: game plays itself after _startGame()
 window._autoPlay=function(){
