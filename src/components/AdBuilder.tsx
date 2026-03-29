@@ -120,6 +120,10 @@ export default function AdBuilder({ template }: Props) {
         ? "if(typeof window._autoPlay==='function')window._autoPlay();"
         : "";
 
+      // Fetch bundled game demo video (auto-play recording)
+      const gameDemoResp = await fetch('/game_demo.mp4');
+      const gameDemoBlob = await gameDemoResp.blob();
+
       const inlinedHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -128,14 +132,17 @@ export default function AdBuilder({ template }: Props) {
   <title>${config.gameName || "Playable Ad"}</title>
   <style>
     #vl{position:fixed;inset:0;z-index:9999;transition:opacity .5s ease}
-    #vl video{width:100%;height:100%;object-fit:cover}
+    #vl video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   </style>
   ${headContent}
 </head>
 <body>
   <div id="vl">
-    <video autoplay playsinline onended="go()">
-      <source src="./video.mp4" type="video/mp4">
+    <video id="vl1" autoplay playsinline onended="nextVid()">
+      <source src="./user_video.mp4" type="video/mp4">
+    </video>
+    <video id="vl2" playsinline style="display:none" onended="go()">
+      <source src="./game_demo.mp4" type="video/mp4">
     </video>
   </div>
   ${bodyContent}
@@ -148,7 +155,15 @@ export default function AdBuilder({ template }: Props) {
       if(gc)gc.classList.add('show');
       setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);
     });
-    // Called when video ends
+    // User video ends → play game demo
+    function nextVid(){
+      var v1=document.getElementById('vl1');
+      var v2=document.getElementById('vl2');
+      v1.style.display='none';
+      v2.style.display='block';
+      v2.play();
+    }
+    // Game demo ends → fade out overlay, start interactive game
     function go(){
       var v=document.getElementById('vl');
       v.style.opacity='0';
@@ -158,8 +173,8 @@ export default function AdBuilder({ template }: Props) {
     // Facebook Ads compliance
     function openStore(){
       if(typeof FbPlayableAd!=='undefined'){FbPlayableAd.onCTAClick();}
-      else if(typeof mraid!=='undefined'){mraid.open('${config.androidStoreUrl || "https://play.google.com/store/apps/details?id=com.ezgamers.sumlink"}');}
-      else{window.open('${config.androidStoreUrl || "https://play.google.com/store/apps/details?id=com.ezgamers.sumlink"}','_blank');}
+      else if(typeof mraid!=='undefined'){mraid.open('${config.androidStoreUrl || "https://play.google.com/store/apps/details?id=com.ezygamers.sumlinknumbergame&hl=en_IN"}');}
+      else{window.open('${config.androidStoreUrl || "https://play.google.com/store/apps/details?id=com.ezygamers.sumlinknumbergame&hl=en_IN"}','_blank');}
     }
   <\/script>
 </body>
@@ -167,7 +182,8 @@ export default function AdBuilder({ template }: Props) {
 
       const zip = new JSZip();
       zip.file("index.html", inlinedHtml);
-      zip.file("video.mp4", videoFile);
+      zip.file("user_video.mp4", videoFile);
+      zip.file("game_demo.mp4", gameDemoBlob);
       const blob = await zip.generateAsync({ type: "blob" });
       saveAs(blob, `${config.gameName || "playable-ad"}-video-playable.zip`);
     } else {
