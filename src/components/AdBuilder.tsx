@@ -137,19 +137,28 @@ export default function AdBuilder({ template }: Props) {
         await ffmpeg.writeFile("v1.mp4", await fetchFile(videoFile));
         await ffmpeg.writeFile("v2.mp4", new Uint8Array(gameDemoArrayBuffer));
         const scaleFilter = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,setpts=PTS-STARTPTS";
-        await ffmpeg.exec([
-          "-i", "v1.mp4",
-          "-i", "v2.mp4",
+        const audioFilter = `[0:a]asetpts=PTS-STARTPTS[a0];[1:a]asetpts=PTS-STARTPTS[a1];[a0][a1]concat=n=2:v=0:a=1[oa]`;
+        // Try with audio from both inputs
+        let ret = await ffmpeg.exec([
+          "-i", "v1.mp4", "-i", "v2.mp4",
           "-filter_complex",
-          `[0:v]${scaleFilter}[v0];[1:v]${scaleFilter}[v1];[v0][v1]concat=n=2:v=1:a=0[outv]`,
-          "-map", "[outv]",
-          "-map", "0:a?",
-          "-c:v", "libx264",
-          "-crf", "18",
-          "-preset", "ultrafast",
-          "-c:a", "aac",
-          "output.mp4"
+          `[0:v]${scaleFilter}[v0];[1:v]${scaleFilter}[v1];[v0][v1]concat=n=2:v=1:a=0[ov];${audioFilter}`,
+          "-map", "[ov]", "-map", "[oa]",
+          "-c:v", "libx264", "-crf", "18", "-preset", "ultrafast",
+          "-c:a", "aac", "output.mp4"
         ]);
+        if (ret !== 0) {
+          // Fallback: only user video audio (game demo may have no audio stream)
+          await ffmpeg.deleteFile("output.mp4").catch(() => {});
+          await ffmpeg.exec([
+            "-i", "v1.mp4", "-i", "v2.mp4",
+            "-filter_complex",
+            `[0:v]${scaleFilter}[v0];[1:v]${scaleFilter}[v1];[v0][v1]concat=n=2:v=1:a=0[ov]`,
+            "-map", "[ov]", "-map", "0:a?",
+            "-c:v", "libx264", "-crf", "18", "-preset", "ultrafast",
+            "-c:a", "aac", "output.mp4"
+          ]);
+        }
         const data = await ffmpeg.readFile("output.mp4");
         const buffer = (data as Uint8Array).buffer as ArrayBuffer;
         combinedVideoBlob = new Blob([buffer], { type: "video/mp4" });
