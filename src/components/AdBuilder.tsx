@@ -145,7 +145,7 @@ export default function AdBuilder({ template }: Props) {
           "-map", "[outv]",
           "-c:v", "libx264",
           "-crf", "18",
-          "-preset", "slow",
+          "-preset", "ultrafast",
           "-an",
           "output.mp4"
         ]);
