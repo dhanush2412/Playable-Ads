@@ -75,7 +75,7 @@ export default function AdBuilder({ template }: Props) {
     if (!isStandalone || !rawHtml) return;
     if (hasVideoUpload) {
       // Auto play waits for postMessage from parent (sent when video ends)
-      const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);});document.addEventListener('touchstart',function(){if(window._unlockAudio)window._unlockAudio();},{once:true});document.addEventListener('click',function(){if(window._unlockAudio)window._unlockAudio();},{once:true});window.addEventListener('message',function(e){if(e.data==='ezyads:videoEnded'){if(window._unlockAudio)window._unlockAudio();if(typeof window._autoPlay==='function')window._autoPlay();}});<\/script>`;
+      const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);});window.addEventListener('message',function(e){if(e.data==='ezyads:startAutoPlay'){var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;cursor:pointer;';ov.innerHTML='<div style="background:rgba(0,0,0,.72);color:#fff;padding:16px 28px;border-radius:22px;font-size:17px;font-weight:700;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.4);">🔊 Tap to start with sound</div>';ov.addEventListener('click',function(){if(window._unlockAudio)window._unlockAudio();ov.remove();if(typeof window._autoPlay==='function')window._autoPlay();});document.body.appendChild(ov);}});<\/script>`;
       setPreviewHtml(rawHtml.replace("</body>", skipIntro + "</body>"));
     } else {
       setPreviewHtml(rawHtml);
@@ -85,7 +85,7 @@ export default function AdBuilder({ template }: Props) {
   // When video ends in preview, notify iframe to start auto play
   useEffect(() => {
     if (videoEnded && playMode === "autoplay" && iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage("ezyads:videoEnded", "*");
+      iframeRef.current.contentWindow.postMessage("ezyads:startAutoPlay", "*");
     }
   }, [videoEnded, playMode]);
 
@@ -143,10 +143,12 @@ export default function AdBuilder({ template }: Props) {
           "-filter_complex",
           `[0:v]${scaleFilter}[v0];[1:v]${scaleFilter}[v1];[v0][v1]concat=n=2:v=1:a=0[outv]`,
           "-map", "[outv]",
+          "-map", "0:a?",
           "-c:v", "libx264",
           "-crf", "18",
           "-preset", "ultrafast",
-          "-an",
+          "-c:a", "aac",
+          "-shortest",
           "output.mp4"
         ]);
         const data = await ffmpeg.readFile("output.mp4");

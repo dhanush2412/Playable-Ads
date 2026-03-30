@@ -375,7 +375,10 @@ function addEmoji(el){
 var AC=null;
 function getAC(){
   if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}
-  if(AC&&AC.state==='suspended')AC.resume();
+  if(AC&&AC.state==='suspended'){
+    AC.resume();
+    try{var b=AC.createBuffer(1,1,22050),s=AC.createBufferSource();s.buffer=b;s.connect(AC.destination);s.start(0);}catch(e){}
+  }
   return AC;
 }
 function _t(f,type,s,d,v,ef){
