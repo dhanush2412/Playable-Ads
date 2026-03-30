@@ -7,6 +7,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { fetchFile } from "@ffmpeg/util";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
@@ -43,6 +45,7 @@ export default function AdBuilder({ template }: Props) {
   const [showEditor, setShowEditor] = useState(false);
   const [fileSizeKB, setFileSizeKB] = useState(0);
   const [exported, setExported] = useState(false);
+  const [merging, setMerging] = useState(false);
 
   // Video upload state
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -122,7 +125,24 @@ export default function AdBuilder({ template }: Props) {
 
       // Fetch bundled game demo video (auto-play recording)
       const gameDemoResp = await fetch('/game_demo.mp4');
-      const gameDemoBlob = await gameDemoResp.blob();
+      const gameDemoArrayBuffer = await gameDemoResp.arrayBuffer();
+
+      // Concatenate user video + game demo using FFmpeg.wasm (stream copy = no quality loss)
+      setMerging(true);
+      let combinedVideoBlob: Blob;
+      try {
+        const ffmpeg = new FFmpeg();
+        await ffmpeg.load();
+        await ffmpeg.writeFile("v1.mp4", await fetchFile(videoFile));
+        await ffmpeg.writeFile("v2.mp4", new Uint8Array(gameDemoArrayBuffer));
+        await ffmpeg.writeFile("concat.txt", "file 'v1.mp4'\nfile 'v2.mp4'\n");
+        await ffmpeg.exec(["-f", "concat", "-safe", "0", "-i", "concat.txt", "-c", "copy", "output.mp4"]);
+        const data = await ffmpeg.readFile("output.mp4");
+        const buffer = (data as Uint8Array).buffer as ArrayBuffer;
+        combinedVideoBlob = new Blob([buffer], { type: "video/mp4" });
+      } finally {
+        setMerging(false);
+      }
 
       const inlinedHtml = `<!DOCTYPE html>
 <html>
@@ -138,11 +158,8 @@ export default function AdBuilder({ template }: Props) {
 </head>
 <body>
   <div id="vl">
-    <video id="vl1" autoplay playsinline onended="nextVid()">
-      <source src="./user_video.mp4" type="video/mp4">
-    </video>
-    <video id="vl2" playsinline style="display:none" onended="go()">
-      <source src="./game_demo.mp4" type="video/mp4">
+    <video autoplay playsinline onended="go()">
+      <source src="./video.mp4" type="video/mp4">
     </video>
   </div>
   ${bodyContent}
@@ -155,15 +172,7 @@ export default function AdBuilder({ template }: Props) {
       if(gc)gc.classList.add('show');
       setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);
     });
-    // User video ends → play game demo
-    function nextVid(){
-      var v1=document.getElementById('vl1');
-      var v2=document.getElementById('vl2');
-      v1.style.display='none';
-      v2.style.display='block';
-      v2.play();
-    }
-    // Game demo ends → fade out overlay, start interactive game
+    // Combined video ends → fade out overlay, start interactive game
     function go(){
       var v=document.getElementById('vl');
       v.style.opacity='0';
@@ -182,8 +191,7 @@ export default function AdBuilder({ template }: Props) {
 
       const zip = new JSZip();
       zip.file("index.html", inlinedHtml);
-      zip.file("user_video.mp4", videoFile);
-      zip.file("game_demo.mp4", gameDemoBlob);
+      zip.file("video.mp4", combinedVideoBlob);
       const blob = await zip.generateAsync({ type: "blob" });
       saveAs(blob, `${config.gameName || "playable-ad"}-video-playable.zip`);
     } else {
@@ -264,7 +272,7 @@ export default function AdBuilder({ template }: Props) {
                 : "bg-purple-600 hover:bg-purple-500 text-white"
             }`}
           >
-            {exported ? "✓ Downloaded!" : isOverLimit ? "⚠ Export (over limit)" : hasVideoUpload && videoFile ? "Export ZIP" : "Export index.html"}
+            {merging ? "Merging videos..." : exported ? "✓ Downloaded!" : isOverLimit ? "⚠ Export (over limit)" : hasVideoUpload && videoFile ? "Export ZIP" : "Export index.html"}
           </button>
         </div>
       </div>
