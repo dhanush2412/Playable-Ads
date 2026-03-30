@@ -148,7 +148,6 @@ export default function AdBuilder({ template }: Props) {
           "-crf", "18",
           "-preset", "ultrafast",
           "-c:a", "aac",
-          "-shortest",
           "output.mp4"
         ]);
         const data = await ffmpeg.readFile("output.mp4");
