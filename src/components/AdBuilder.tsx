@@ -127,7 +127,8 @@ export default function AdBuilder({ template }: Props) {
       const gameDemoResp = await fetch('/game_demo.mp4');
       const gameDemoArrayBuffer = await gameDemoResp.arrayBuffer();
 
-      // Concatenate user video + game demo using FFmpeg.wasm (stream copy = no quality loss)
+      // Concatenate user video + game demo using FFmpeg.wasm
+      // Re-encode both to 1080x1920 so any input resolution works
       setMerging(true);
       let combinedVideoBlob: Blob;
       try {
@@ -135,8 +136,19 @@ export default function AdBuilder({ template }: Props) {
         await ffmpeg.load();
         await ffmpeg.writeFile("v1.mp4", await fetchFile(videoFile));
         await ffmpeg.writeFile("v2.mp4", new Uint8Array(gameDemoArrayBuffer));
-        await ffmpeg.writeFile("concat.txt", "file 'v1.mp4'\nfile 'v2.mp4'\n");
-        await ffmpeg.exec(["-f", "concat", "-safe", "0", "-i", "concat.txt", "-c", "copy", "output.mp4"]);
+        const scaleFilter = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,setpts=PTS-STARTPTS";
+        await ffmpeg.exec([
+          "-i", "v1.mp4",
+          "-i", "v2.mp4",
+          "-filter_complex",
+          `[0:v]${scaleFilter}[v0];[1:v]${scaleFilter}[v1];[v0][v1]concat=n=2:v=1:a=0[outv]`,
+          "-map", "[outv]",
+          "-c:v", "libx264",
+          "-crf", "23",
+          "-preset", "fast",
+          "-an",
+          "output.mp4"
+        ]);
         const data = await ffmpeg.readFile("output.mp4");
         const buffer = (data as Uint8Array).buffer as ArrayBuffer;
         combinedVideoBlob = new Blob([buffer], { type: "video/mp4" });
