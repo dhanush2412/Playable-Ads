@@ -532,9 +532,11 @@ export default function AdBuilder({ template }: Props) {
                     videoEnded ? "opacity-0 pointer-events-none" : "opacity-100"
                   }`}
                   autoPlay
+                  muted
                   playsInline
                   onEnded={() => setVideoEnded(true)}
                   onClick={() => {
+                    if (videoRef.current?.muted) { videoRef.current.muted = false; return; }
                     if (videoRef.current?.paused) videoRef.current.play();
                     else videoRef.current?.pause();
                   }}
