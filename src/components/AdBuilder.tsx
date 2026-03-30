@@ -144,8 +144,8 @@ export default function AdBuilder({ template }: Props) {
           `[0:v]${scaleFilter}[v0];[1:v]${scaleFilter}[v1];[v0][v1]concat=n=2:v=1:a=0[outv]`,
           "-map", "[outv]",
           "-c:v", "libx264",
-          "-crf", "23",
-          "-preset", "fast",
+          "-crf", "18",
+          "-preset", "slow",
           "-an",
           "output.mp4"
         ]);
