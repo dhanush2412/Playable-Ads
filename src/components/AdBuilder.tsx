@@ -75,7 +75,7 @@ export default function AdBuilder({ template }: Props) {
     if (!isStandalone || !rawHtml) return;
     if (hasVideoUpload) {
       // Auto play waits for postMessage from parent (sent when video ends)
-      const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);});window.addEventListener('message',function(e){if(e.data==='ezyads:videoEnded'&&typeof window._autoPlay==='function')window._autoPlay();});<\/script>`;
+      const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);});document.addEventListener('touchstart',function(){if(window._unlockAudio)window._unlockAudio();},{once:true});document.addEventListener('click',function(){if(window._unlockAudio)window._unlockAudio();},{once:true});window.addEventListener('message',function(e){if(e.data==='ezyads:videoEnded'){if(window._unlockAudio)window._unlockAudio();if(typeof window._autoPlay==='function')window._autoPlay();}});<\/script>`;
       setPreviewHtml(rawHtml.replace("</body>", skipIntro + "</body>"));
     } else {
       setPreviewHtml(rawHtml);
@@ -170,12 +170,16 @@ export default function AdBuilder({ template }: Props) {
 </head>
 <body>
   <div id="vl">
-    <video autoplay playsinline onended="go()">
+    <video autoplay playsinline onended="go()" onplay="if(window._unlockAudio)window._unlockAudio();" ontouchstart="if(window._unlockAudio)window._unlockAudio();">
       <source src="./video.mp4" type="video/mp4">
     </video>
   </div>
   ${bodyContent}
   <script>
+    // Unlock audio on any first interaction with the page
+    function _tryUnlock(){if(window._unlockAudio)window._unlockAudio();}
+    document.addEventListener('touchstart',_tryUnlock,{once:true});
+    document.addEventListener('click',_tryUnlock,{once:true});
     // Hide newspaper intro immediately, start game
     document.addEventListener('DOMContentLoaded',function(){
       var intro=document.getElementById('intro');
