@@ -46,6 +46,10 @@ export default function AdBuilder({ template }: Props) {
   const [fileSizeKB, setFileSizeKB] = useState(0);
   const [exported, setExported] = useState(false);
   const [merging, setMerging] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const phoneFrameRef = useRef<HTMLDivElement>(null);
 
   // Video upload state
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -102,6 +106,75 @@ export default function AdBuilder({ template }: Props) {
 
   function handleChange(field: keyof AdConfig, value: string | number) {
     setConfig((prev) => ({ ...prev, [field]: value }));
+  }
+
+  // Stop recording when game ends
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (e.data === "ezyads:gameEnded" && recorderRef.current?.state === "recording") {
+        setTimeout(() => {
+          recorderRef.current?.stop();
+          setRecording(false);
+        }, 1500); // capture end card before stopping
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  async function handleRecord() {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser" } as MediaTrackConstraints,
+        audio: true,
+        selfBrowserSurface: "include",
+        preferCurrentTab: true,
+      } as unknown as DisplayMediaStreamOptions);
+
+      // Try Region Capture to crop to phone preview only
+      if ("CropTarget" in window && phoneFrameRef.current) {
+        try {
+          const cropTarget = await (window as any).CropTarget.fromElement(phoneFrameRef.current);
+          const [videoTrack] = stream.getVideoTracks();
+          await (videoTrack as any).cropTo(cropTarget);
+        } catch { /* Region Capture unsupported — records full tab */ }
+      }
+
+      recordedChunksRef.current = [];
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : "video/webm";
+      const recorder = new MediaRecorder(stream, { mimeType });
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+        saveAs(blob, `${config.gameName || "game-demo"}-recording.webm`);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+
+      recorder.start(100);
+      recorderRef.current = recorder;
+      setRecording(true);
+
+      // Auto-start the preview playback
+      if (hasVideoUpload && videoRef.current) {
+        videoRef.current.currentTime = 0;
+        videoRef.current.play();
+        setVideoEnded(false);
+      } else if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage("ezyads:startAutoPlay", "*");
+      }
+    } catch {
+      // User cancelled or permission denied
+    }
+  }
+
+  function handleStopRecord() {
+    recorderRef.current?.stop();
+    setRecording(false);
   }
 
   async function handleExport() {
@@ -288,6 +361,18 @@ export default function AdBuilder({ template }: Props) {
             <option value="applovin">AppLovin (5MB)</option>
             <option value="ironsource">IronSource (2MB)</option>
           </select>
+          {hasVideoUpload && (
+            <button
+              onClick={recording ? handleStopRecord : handleRecord}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                recording
+                  ? "bg-red-600 hover:bg-red-500 text-white"
+                  : "bg-gray-700 hover:bg-gray-600 text-white"
+              }`}
+            >
+              {recording ? "⏹ Stop" : "⏺ Record"}
+            </button>
+          )}
           <button
             onClick={handleExport}
             className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
@@ -522,7 +607,7 @@ export default function AdBuilder({ template }: Props) {
           <p className="text-gray-600 text-xs mb-4 uppercase tracking-widest">Live Preview</p>
           <div className="relative" style={{ width: 340, height: 720 }}>
             {/* Phone frame */}
-            <div className="absolute inset-0 rounded-[40px] border-4 border-gray-700 bg-black overflow-hidden shadow-2xl">
+            <div ref={phoneFrameRef} className="absolute inset-0 rounded-[40px] border-4 border-gray-700 bg-black overflow-hidden shadow-2xl">
               {/* Video overlay (only for video+playable template) */}
               {hasVideoUpload && videoObjectUrl && (
                 <video
