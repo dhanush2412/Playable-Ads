@@ -87,12 +87,12 @@ export default function AdBuilder({ template }: Props) {
     }
   }, [rawHtml, hasVideoUpload, isStandalone]);
 
-  // When video ends in preview, notify iframe to start auto play
+  // When video ends in preview, notify iframe to start auto play (skip during Export 2 recording)
   useEffect(() => {
-    if (videoEnded && playMode === "autoplay" && iframeRef.current?.contentWindow) {
+    if (videoEnded && playMode === "autoplay" && iframeRef.current?.contentWindow && exporting2 === "idle") {
       iframeRef.current.contentWindow.postMessage("ezyads:startAutoPlay", "*");
     }
-  }, [videoEnded, playMode]);
+  }, [videoEnded, playMode, exporting2]);
 
   const updatePreview = useCallback(() => {
     if (isStandalone) return; // standalone templates load from file
