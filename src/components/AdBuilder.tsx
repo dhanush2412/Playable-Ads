@@ -341,7 +341,7 @@ export default function AdBuilder({ template }: Props) {
         iframeRef.current.contentWindow.postMessage("ezyads:startAutoPlay", "*");
       }
 
-      // Wait for game to end, then stop
+      // Wait for game to end, then stop (60s fallback if game never sends gameEnded)
       const gameBlob = await new Promise<Blob>((resolve) => {
         recorder.onstop = () => {
           stream.getTracks().forEach((t) => t.stop());
@@ -350,9 +350,14 @@ export default function AdBuilder({ template }: Props) {
         function onMsg(e: MessageEvent) {
           if (e.data === "ezyads:gameEnded") {
             window.removeEventListener("message", onMsg);
+            clearTimeout(fallback);
             setTimeout(() => recorder.stop(), 1500);
           }
         }
+        const fallback = setTimeout(() => {
+          window.removeEventListener("message", onMsg);
+          recorder.stop();
+        }, 60000);
         window.addEventListener("message", onMsg);
       });
 

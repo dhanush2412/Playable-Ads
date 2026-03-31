@@ -228,13 +228,11 @@ function buildGrid(){
 }
 
 function findPair(){
-  var rows=Math.floor(g.length/COLS);
-  for(var r=0;r<rows;r++){
-    for(var c=0;c<COLS;c++){
-      var i=r*COLS+c;
-      if(g[i]===0)continue;
-      if(c<COLS-1){var j=i+1;if(g[j]!==0&&(g[i]===g[j]||g[i]+g[j]===10))return [i,j];}
-      if(r<rows-1){var k=i+COLS;if(g[k]!==0&&(g[i]===g[k]||g[i]+g[k]===10))return [i,k];}
+  var n=g.length;
+  for(var i=0;i<n;i++){
+    if(g[i]===0)continue;
+    for(var j=i+1;j<n;j++){
+      if(g[j]!==0&&(g[i]===g[j]||g[i]+g[j]===10))return [i,j];
     }
   }
   return null;
@@ -447,7 +445,7 @@ function showPill(t,ok){
   showPill._t=setTimeout(function(){$p.classList.remove("s");},1600);
 }
 
-function endCard(){soundWin();$end.classList.add("s");$cta.style.display="block";}
+function endCard(){soundWin();$end.classList.add("s");$cta.style.display="block";if(window.parent!==window)window.parent.postMessage("ezyads:gameEnded","*");}
 
 window.handleCTA=function(){
   if(typeof FbPlayableAd!=="undefined"){FbPlayableAd.onCTAClick()}else if(typeof mraid!=="undefined")mraid.open(STORE_URL);
