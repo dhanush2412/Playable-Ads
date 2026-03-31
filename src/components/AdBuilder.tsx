@@ -46,6 +46,7 @@ export default function AdBuilder({ template }: Props) {
   const [fileSizeKB, setFileSizeKB] = useState(0);
   const [exported, setExported] = useState(false);
   const [merging, setMerging] = useState(false);
+  const [exporting2, setExporting2] = useState<"idle" | "recording" | "merging">("idle");
   const [recording, setRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -307,6 +308,155 @@ export default function AdBuilder({ template }: Props) {
     setTimeout(() => setExported(false), 3000);
   }
 
+  // Export 2: screen-record the live auto-play game, then concat with user video via FFmpeg
+  async function handleExport2() {
+    if (!videoFile || exporting2 !== "idle") return;
+    setExporting2("recording");
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser" },
+        audio: true,
+        selfBrowserSurface: "include",
+        preferCurrentTab: true,
+      } as unknown as DisplayMediaStreamOptions);
+
+      if ("CropTarget" in window && phoneFrameRef.current) {
+        try {
+          const cropTarget = await (window as any).CropTarget.fromElement(phoneFrameRef.current);
+          const [videoTrack] = stream.getVideoTracks();
+          await (videoTrack as any).cropTo(cropTarget);
+        } catch { /* Region Capture unsupported — records full tab */ }
+      }
+
+      const chunks: Blob[] = [];
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : "video/webm";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.start(100);
+
+      // Trigger auto-play in iframe
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage("ezyads:startAutoPlay", "*");
+      }
+
+      // Wait for game to end, then stop
+      const gameBlob = await new Promise<Blob>((resolve) => {
+        recorder.onstop = () => {
+          stream.getTracks().forEach((t) => t.stop());
+          resolve(new Blob(chunks, { type: "video/webm" }));
+        };
+        function onMsg(e: MessageEvent) {
+          if (e.data === "ezyads:gameEnded") {
+            window.removeEventListener("message", onMsg);
+            setTimeout(() => recorder.stop(), 1500);
+          }
+        }
+        window.addEventListener("message", onMsg);
+      });
+
+      setExporting2("merging");
+
+      // FFmpeg: user video (v1) + screen recording (v2) → combined mp4
+      const ffmpeg = new FFmpeg();
+      await ffmpeg.load();
+      await ffmpeg.writeFile("v1.mp4", await fetchFile(videoFile));
+      await ffmpeg.writeFile("v2.webm", await fetchFile(gameBlob));
+      const scaleFilter = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,setpts=PTS-STARTPTS";
+      const audioFilter = `[0:a]asetpts=PTS-STARTPTS[a0];[1:a]asetpts=PTS-STARTPTS[a1];[a0][a1]concat=n=2:v=0:a=1[oa]`;
+      let ret = await ffmpeg.exec([
+        "-i", "v1.mp4", "-i", "v2.webm",
+        "-filter_complex",
+        `[0:v]${scaleFilter}[v0];[1:v]${scaleFilter}[v1];[v0][v1]concat=n=2:v=1:a=0[ov];${audioFilter}`,
+        "-map", "[ov]", "-map", "[oa]",
+        "-c:v", "libx264", "-crf", "18", "-preset", "ultrafast",
+        "-c:a", "aac", "output.mp4"
+      ]);
+      if (ret !== 0) {
+        await ffmpeg.deleteFile("output.mp4").catch(() => {});
+        await ffmpeg.exec([
+          "-i", "v1.mp4", "-i", "v2.webm",
+          "-filter_complex",
+          `[0:v]${scaleFilter}[v0];[1:v]${scaleFilter}[v1];[v0][v1]concat=n=2:v=1:a=0[ov]`,
+          "-map", "[ov]", "-map", "0:a?",
+          "-c:v", "libx264", "-crf", "18", "-preset", "ultrafast",
+          "-c:a", "aac", "output.mp4"
+        ]);
+      }
+      const data = await ffmpeg.readFile("output.mp4");
+      const buffer = (data as Uint8Array).buffer as ArrayBuffer;
+      const combinedVideoBlob = new Blob([buffer], { type: "video/mp4" });
+
+      // Build index.html (same structure as Export)
+      const headContent = rawHtml.substring(
+        rawHtml.indexOf('>', rawHtml.indexOf('<head')) + 1,
+        rawHtml.indexOf('</head>')
+      );
+      const bodyContent = rawHtml.substring(
+        rawHtml.indexOf('>', rawHtml.indexOf('<body')) + 1,
+        rawHtml.lastIndexOf('</body>')
+      );
+      const autoCall = playMode === "autoplay"
+        ? "if(typeof window._autoPlay==='function')window._autoPlay();"
+        : "";
+      const inlinedHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <title>${config.gameName || "Playable Ad"}</title>
+  <style>
+    #vl{position:fixed;inset:0;z-index:9999;transition:opacity .5s ease}
+    #vl video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  </style>
+  ${headContent}
+</head>
+<body>
+  <div id="vl">
+    <video autoplay playsinline onended="go()" onplay="if(window._unlockAudio)window._unlockAudio();" ontouchstart="if(window._unlockAudio)window._unlockAudio();">
+      <source src="./video.mp4" type="video/mp4">
+    </video>
+  </div>
+  ${bodyContent}
+  <script>
+    function _tryUnlock(){if(window._unlockAudio)window._unlockAudio();}
+    document.addEventListener('touchstart',_tryUnlock,{once:true});
+    document.addEventListener('click',_tryUnlock,{once:true});
+    document.addEventListener('DOMContentLoaded',function(){
+      var intro=document.getElementById('intro');
+      if(intro)intro.classList.add('done');
+      var gc=document.getElementById('gc');
+      if(gc)gc.classList.add('show');
+      setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);
+    });
+    function go(){
+      var v=document.getElementById('vl');
+      v.style.opacity='0';
+      setTimeout(function(){v.style.display='none'},500);
+      ${autoCall}
+    }
+    function openStore(){
+      if(typeof FbPlayableAd!=='undefined'){FbPlayableAd.onCTAClick();}
+      else if(typeof mraid!=='undefined'){mraid.open('${config.androidStoreUrl || "https://play.google.com/store/apps/details?id=com.ezygamers.sumlinknumbergame&hl=en_IN"}');}
+      else{window.open('${config.androidStoreUrl || "https://play.google.com/store/apps/details?id=com.ezygamers.sumlinknumbergame&hl=en_IN"}','_blank');}
+    }
+  <\/script>
+</body>
+</html>`;
+
+      const zip = new JSZip();
+      zip.file("index.html", inlinedHtml);
+      zip.file("video.mp4", combinedVideoBlob);
+      const blob = await zip.generateAsync({ type: "blob" });
+      saveAs(blob, `${config.gameName || "playable-ad"}-live-export.zip`);
+    } catch {
+      // User cancelled or permission denied
+    } finally {
+      setExporting2("idle");
+    }
+  }
+
   function handleVideoUpload(file: File) {
     if (!file.type.startsWith("video/")) return;
     if (videoObjectUrl) URL.revokeObjectURL(videoObjectUrl);
@@ -361,6 +511,19 @@ export default function AdBuilder({ template }: Props) {
             <option value="applovin">AppLovin (5MB)</option>
             <option value="ironsource">IronSource (2MB)</option>
           </select>
+          {hasVideoUpload && videoFile && (
+            <button
+              onClick={handleExport2}
+              disabled={exporting2 !== "idle"}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                exporting2 !== "idle"
+                  ? "bg-orange-600 text-white cursor-wait"
+                  : "bg-orange-600 hover:bg-orange-500 text-white"
+              }`}
+            >
+              {exporting2 === "recording" ? "⏺ Recording game..." : exporting2 === "merging" ? "Merging..." : "Export 2 (Live)"}
+            </button>
+          )}
           {hasVideoUpload && (
             <button
               onClick={recording ? handleStopRecord : handleRecord}
@@ -614,7 +777,7 @@ export default function AdBuilder({ template }: Props) {
                   ref={videoRef}
                   src={videoObjectUrl}
                   className={`absolute inset-0 w-full h-full object-cover z-10 transition-opacity duration-500 ${
-                    videoEnded ? "opacity-0 pointer-events-none" : "opacity-100"
+                    videoEnded || exporting2 === "recording" ? "opacity-0 pointer-events-none" : "opacity-100"
                   }`}
                   autoPlay
                   muted
