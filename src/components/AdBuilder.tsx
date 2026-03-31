@@ -311,23 +311,25 @@ export default function AdBuilder({ template }: Props) {
   // Export 2: screen-record the live auto-play game, then concat with user video via FFmpeg
   async function handleExport2() {
     if (!videoFile || exporting2 !== "idle") return;
-    setExporting2("recording");
+
+    // Get permission first — before going fullscreen so the dialog isn't confusing
+    let stream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { displaySurface: "browser" },
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser", frameRate: 60 } as MediaTrackConstraints,
         audio: true,
         selfBrowserSurface: "include",
         preferCurrentTab: true,
       } as unknown as DisplayMediaStreamOptions);
+    } catch {
+      return; // user cancelled
+    }
 
-      if ("CropTarget" in window && phoneFrameRef.current) {
-        try {
-          const cropTarget = await (window as any).CropTarget.fromElement(phoneFrameRef.current);
-          const [videoTrack] = stream.getVideoTracks();
-          await (videoTrack as any).cropTo(cropTarget);
-        } catch { /* Region Capture unsupported — records full tab */ }
-      }
+    setExporting2("recording");
+    // Wait for fullscreen CSS to apply before recording starts
+    await new Promise(resolve => setTimeout(resolve, 300));
 
+    try {
       const chunks: Blob[] = [];
       const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
         ? "video/webm;codecs=vp9,opus"
@@ -368,12 +370,14 @@ export default function AdBuilder({ template }: Props) {
       await ffmpeg.load();
       await ffmpeg.writeFile("v1.mp4", await fetchFile(videoFile));
       await ffmpeg.writeFile("v2.webm", await fetchFile(gameBlob));
-      const scaleFilter = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,setpts=PTS-STARTPTS";
+      const userScale = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,setpts=PTS-STARTPTS";
+      // Screen recording is landscape — crop the center portrait portion (9:16) then scale up
+      const gameScale = "crop=min(iw\\,ih*9/16):ih:(iw-min(iw\\,ih*9/16))/2:0,scale=1080:1920,setsar=1,fps=30,setpts=PTS-STARTPTS";
       const audioFilter = `[0:a]asetpts=PTS-STARTPTS[a0];[1:a]asetpts=PTS-STARTPTS[a1];[a0][a1]concat=n=2:v=0:a=1[oa]`;
       let ret = await ffmpeg.exec([
         "-i", "v1.mp4", "-i", "v2.webm",
         "-filter_complex",
-        `[0:v]${scaleFilter}[v0];[1:v]${scaleFilter}[v1];[v0][v1]concat=n=2:v=1:a=0[ov];${audioFilter}`,
+        `[0:v]${userScale}[v0];[1:v]${gameScale}[v1];[v0][v1]concat=n=2:v=1:a=0[ov];${audioFilter}`,
         "-map", "[ov]", "-map", "[oa]",
         "-c:v", "libx264", "-crf", "18", "-preset", "ultrafast",
         "-c:a", "aac", "output.mp4"
@@ -383,7 +387,7 @@ export default function AdBuilder({ template }: Props) {
         await ffmpeg.exec([
           "-i", "v1.mp4", "-i", "v2.webm",
           "-filter_complex",
-          `[0:v]${scaleFilter}[v0];[1:v]${scaleFilter}[v1];[v0][v1]concat=n=2:v=1:a=0[ov]`,
+          `[0:v]${userScale}[v0];[1:v]${gameScale}[v1];[v0][v1]concat=n=2:v=1:a=0[ov]`,
           "-map", "[ov]", "-map", "0:a?",
           "-c:v", "libx264", "-crf", "18", "-preset", "ultrafast",
           "-c:a", "aac", "output.mp4"
@@ -770,12 +774,12 @@ export default function AdBuilder({ template }: Props) {
           </div>
         </div>
 
-        {/* Right panel: Live preview */}
-        <div className="flex-1 bg-gray-900 flex flex-col items-center justify-center p-6">
-          <p className="text-gray-600 text-xs mb-4 uppercase tracking-widest">Live Preview</p>
-          <div className="relative" style={{ width: 340, height: 720 }}>
+        {/* Right panel: Live preview — goes fullscreen during Export 2 recording */}
+        <div className={`flex-1 bg-gray-900 flex flex-col items-center justify-center ${exporting2 === "recording" ? "fixed inset-0 z-[9999] bg-black p-0" : "p-6"}`}>
+          {exporting2 !== "recording" && <p className="text-gray-600 text-xs mb-4 uppercase tracking-widest">Live Preview</p>}
+          <div className="relative" style={exporting2 === "recording" ? { height: "100vh", width: "calc(100vh * 9 / 16)" } : { width: 340, height: 720 }}>
             {/* Phone frame */}
-            <div ref={phoneFrameRef} className="absolute inset-0 rounded-[40px] border-4 border-gray-700 bg-black overflow-hidden shadow-2xl">
+            <div ref={phoneFrameRef} className={`absolute inset-0 bg-black overflow-hidden ${exporting2 === "recording" ? "" : "rounded-[40px] border-4 border-gray-700 shadow-2xl"}`}>
               {/* Video overlay (only for video+playable template) */}
               {hasVideoUpload && videoObjectUrl && (
                 <video
