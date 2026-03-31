@@ -80,7 +80,7 @@ export default function AdBuilder({ template }: Props) {
     if (!isStandalone || !rawHtml) return;
     if (hasVideoUpload) {
       // Auto play waits for postMessage from parent (sent when video ends)
-      const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);});window.addEventListener('message',function(e){if(e.data==='ezyads:startAutoPlay'){if(window._unlockAudio)window._unlockAudio();if(typeof window._autoPlay==='function')window._autoPlay();}});<\/script>`;
+      const skipIntro = `<script>document.addEventListener('DOMContentLoaded',function(){var intro=document.getElementById('intro');if(intro)intro.classList.add('done');var gc=document.getElementById('gc');if(gc)gc.classList.add('show');setTimeout(function(){if(typeof window._startGame==='function')window._startGame();},50);});window.addEventListener('message',function(e){if(e.data==='ezyads:startAutoPlay'){if(window._unlockAudio)window._unlockAudio();if(typeof window._startGame==='function')window._startGame();setTimeout(function(){if(typeof window._autoPlay==='function')window._autoPlay();},100);}});<\/script>`;
       setPreviewHtml(rawHtml.replace("</body>", skipIntro + "</body>"));
     } else {
       setPreviewHtml(rawHtml);

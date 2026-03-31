@@ -466,7 +466,7 @@ window._autoPlay=function(){
   function nextMove(){
     if(over)return;
     var pair=findPair();
-    if(!pair){endCard();return;}
+    if(!pair)return;
     var cells=document.getElementById('gr').children;
     if(cells[pair[0]])cells[pair[0]].click();
     setTimeout(function(){
