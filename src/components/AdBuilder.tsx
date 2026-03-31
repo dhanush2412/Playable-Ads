@@ -824,7 +824,7 @@ export default function AdBuilder({ template }: Props) {
               )}
             </div>
           </div>
-          <p className="text-gray-700 text-xs mt-4">375 × 667 — iPhone SE</p>
+          {exporting2 !== "recording" && <p className="text-gray-700 text-xs mt-4">375 × 667 — iPhone SE</p>}
         </div>
       </div>
     </div>
